@@ -38,9 +38,9 @@ Copia usuarios, madres, bebés, padres, controles, extracciones, actividades y p
 ## 5. Publicar la aplicación en Render
 1. Subir la carpeta de la app a un repositorio **privado** de GitHub (en github.com: **New repository** > *Private* > **uploading an existing file**, y arrastrar el contenido de la carpeta, sin `registro.db` ni la carpeta `consentimientos`).
 2. En https://render.com: crear una cuenta, **New > Blueprint** y elegir ese repositorio. Render lee `render.yaml`.
-3. Completar las tres variables del paso 3: `DATABASE_URL`, `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`. La clave de sesiones (`SECRET_KEY`) se genera sola.
+3. Completar las tres variables del paso 3: `DATABASE_URL`, `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`, y además `CODIGO_ALTA`: una palabra secreta inventada (por ejemplo 10 letras y números) que se pide una sola vez, al crear el Administrador. La clave de sesiones (`SECRET_KEY`) se genera sola.
 4. **Apply / Deploy**. En unos minutos queda la dirección, por ejemplo `https://cenlac.onrender.com`.
-5. Abrirla. Si la base está vacía, pide crear el usuario **Administrador**; si se migraron datos, entrar con los usuarios de siempre.
+5. Abrirla. Si la base está vacía, pide crear el usuario **Administrador** junto con el código de alta; si se migraron datos, entrar con los usuarios de siempre. Desde ese momento solo entran las personas a las que el Administrador les crea un usuario.
 
 Sobre los planes:
 - **Render gratis:** se "duerme" después de 15 minutos sin uso y la primera apertura tarda alrededor de un minuto. Para uso diario conviene el plan **Starter** (unos USD 7 por mes).

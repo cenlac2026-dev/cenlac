@@ -37,6 +37,8 @@ Los datos se guardan en el archivo `registro.db` de esta carpeta. Si ya tenía u
 ## Usuarios y perfiles
 La primera vez que se abre la app pide crear el usuario **Administrador** (pantalla "Configuración inicial"). Después, cada persona entra con su usuario y contraseña; la sesión dura 12 horas. El administrador crea las cuentas del equipo en 👥 Usuarios, les asigna el perfil, puede cambiarlo, desactivar una cuenta o asignar una contraseña nueva. Cada uno cambia la suya en "Mi contraseña". Siempre queda al menos un administrador activo.
 
+**Solo entran las personas que habilita el Administrador.** No hay registro libre: sin un usuario creado en 👥 Usuarios no se ve ninguna pantalla, y al desactivar una cuenta esa persona queda afuera en el acto, aunque tenga la app abierta. Después de 5 contraseñas incorrectas en 15 minutos, ese usuario y esa conexión quedan bloqueados 15 minutos. Los buscadores no muestran la app. Publicada en internet, el primer Administrador solo se puede crear con el **código de alta** (variable `CODIGO_ALTA`), para que nadie más se adelante.
+
 | Perfil | Puede |
 |---|---|
 | Administrador | Todo: carga, edición, eliminación, Estadísticas, Cierre mensual con descarga e impresión del PDF, y gestión de usuarios. |

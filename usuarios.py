@@ -8,6 +8,10 @@ Perfiles:
 - Consulta: vista mini (widget de escritorio) con información básica de las madres activas,
   sin datos personales ni de salud, y no puede modificar nada.
 """
+import hmac
+import os
+import threading
+import time
 from datetime import datetime, timedelta
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
@@ -77,7 +81,55 @@ def iniciar(app, get_db):
     app.register_blueprint(bp)
     app.permanent_session_lifetime = DURACION_SESION
     app.before_request(controlar_acceso)
+    app.after_request(no_indexar)
     app.context_processor(lambda: {"usuario_actual": g.get("usuario"), "puede": puede, "ROLES": ROLES})
+
+
+# Publicada en internet: el primer Administrador solo se puede crear con el código de alta
+# (variable CODIGO_ALTA, que se carga en Render). Así nadie más puede adueñarse de la app.
+EN_INTERNET = os.environ.get("EN_INTERNET") == "1"
+CODIGO_ALTA = os.environ.get("CODIGO_ALTA", "").strip()
+
+# Freno a quien prueba contraseñas: 5 intentos fallidos en 15 minutos bloquean ese usuario y esa conexión.
+MAX_FALLOS = 5
+VENTANA_FALLOS = 15 * 60
+_fallos = {}
+_fallos_lock = threading.Lock()
+
+
+def _claves_fallo(usuario=""):
+    claves = ["ip:" + (request.remote_addr or "?")]
+    if usuario:
+        claves.append("u:" + usuario.lower())
+    return claves
+
+
+def bloqueado(usuario=""):
+    limite = time.time() - VENTANA_FALLOS
+    with _fallos_lock:
+        for clave in _claves_fallo(usuario):
+            _fallos[clave] = [t for t in _fallos.get(clave, []) if t > limite]
+            if len(_fallos[clave]) >= MAX_FALLOS:
+                return True
+    return False
+
+
+def anotar_fallo(usuario=""):
+    with _fallos_lock:
+        for clave in _claves_fallo(usuario):
+            _fallos.setdefault(clave, []).append(time.time())
+
+
+def olvidar_fallos(usuario=""):
+    with _fallos_lock:
+        for clave in _claves_fallo(usuario):
+            _fallos.pop(clave, None)
+
+
+def no_indexar(respuesta):
+    """Que los buscadores (Google, etc.) no muestren ninguna página de la app."""
+    respuesta.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return respuesta
 
 
 def puede(permiso):
@@ -121,12 +173,19 @@ def configurar():
     """Primer inicio: se crea el usuario administrador."""
     if hay_usuarios():
         return redirect(url_for("usuarios.ingresar"))
-    if request.method == "POST":
+    sin_codigo = EN_INTERNET and not CODIGO_ALTA
+    if request.method == "POST" and not sin_codigo:
         f = request.form
         usuario, nombre = (f.get("usuario") or "").strip(), (f.get("nombre") or "").strip()
         error = validar_clave(f.get("clave") or "", f.get("repetir") or "")
         if not usuario or not nombre:
             error = "Complete el usuario y el nombre."
+        if CODIGO_ALTA:
+            if bloqueado():
+                error = "Demasiados intentos. Espere 15 minutos y vuelva a probar."
+            elif not hmac.compare_digest((f.get("codigo") or "").strip().encode(), CODIGO_ALTA.encode()):
+                anotar_fallo()
+                error = "El código de alta no es correcto."
         if error:
             flash(error, "error")
         else:
@@ -139,7 +198,7 @@ def configurar():
             session["usuario_id"] = cur.lastrowid
             flash("¡Bienvenida/o! Se creó el usuario administrador. Desde Usuarios puede crear las cuentas del equipo.")
             return redirect(url_for("listado"))
-    return render_template("configurar.html")
+    return render_template("configurar.html", sin_codigo=sin_codigo, pide_codigo=bool(CODIGO_ALTA))
 
 
 @bp.route("/ingresar", methods=["GET", "POST"])
@@ -148,8 +207,12 @@ def ingresar():
         return redirect(url_for("usuarios.configurar"))
     if request.method == "POST":
         usuario = (request.form.get("usuario") or "").strip()
+        if bloqueado(usuario):
+            flash("Demasiados intentos fallidos. Espere 15 minutos y vuelva a probar, o pida ayuda al Administrador.", "error")
+            return render_template("ingresar.html"), 429
         fila = _get_db().execute("SELECT * FROM usuarios WHERE lower(usuario) = lower(?)", (usuario,)).fetchone()
         if fila and fila["activo"] and check_password_hash(fila["clave_hash"], request.form.get("clave") or ""):
+            olvidar_fallos(usuario)
             session.clear()
             session.permanent = True
             session["usuario_id"] = fila["id"]
@@ -162,6 +225,7 @@ def ingresar():
             if not siguiente.startswith("/") or siguiente.startswith("//"):
                 siguiente = url_for("listado")
             return redirect(siguiente)
+        anotar_fallo(usuario)
         flash("Usuario o contraseña incorrectos, o el usuario está desactivado.", "error")
     return render_template("ingresar.html")
 

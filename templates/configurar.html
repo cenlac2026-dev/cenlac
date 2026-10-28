@@ -4,13 +4,19 @@
 <section class="tarjeta caja-ingreso">
   <img src="{{ url_for('static', filename='ilustracion-bebe.svg') }}" alt="" class="ingreso-ilustracion">
   <h1>¡Bienvenida/o!</h1>
-  <p>Es la primera vez que se abre la aplicación. Cree el usuario <b>Administrador</b>: después, desde <b>Usuarios</b>, puede crear las cuentas del equipo.</p>
+  {% if sin_codigo %}
+  <p>Es la primera vez que se abre CENLAC, pero todavía falta configurar el <b>código de alta</b>.</p>
+  <p>Por seguridad, en internet el usuario Administrador solo se puede crear con ese código. Cárguelo en el servicio de hosting (en Render: <b>Environment</b>, variable <code>CODIGO_ALTA</code>) y vuelva a abrir esta página.</p>
+  {% else %}
+  <p>Es la primera vez que se abre la aplicación. Cree el usuario <b>Administrador</b>: después, desde <b>Usuarios</b>, puede crear las cuentas del equipo. Nadie más puede entrar sin un usuario creado por usted.</p>
   <form method="post" class="formulario-ingreso">
+    {% if pide_codigo %}<label>Código de alta<input type="password" name="codigo" autocomplete="off" required></label>{% endif %}
     <label>Nombre y apellido<input name="nombre" required></label>
     <label>Usuario<input name="usuario" autocomplete="username" required placeholder="Ej.: szabala"></label>
     <label>Contraseña<input type="password" name="clave" autocomplete="new-password" minlength="6" required></label>
     <label>Repetir contraseña<input type="password" name="repetir" autocomplete="new-password" minlength="6" required></label>
     <button type="submit">Crear administrador</button>
   </form>
+  {% endif %}
 </section>
 {% endblock %}
