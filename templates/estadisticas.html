@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block titulo %}Estadísticas{% endblock %}
+{% macro porc(n, total) %}{{ ((n * 100 / total) | round(1)) if total else 0 }}%{% endmacro %}
+{% block contenido %}
+<h1>📊 Estadísticas del centro</h1>
+
+<section class="tarjeta proyeccion">
+  <div class="encabezado">
+    <div>
+      <h2>📈 Proyección</h2>
+      <p class="nota">Registrado de {{ proy.desde }} a {{ proy.hasta }} (6 meses) y proyección de {{ proy.proy_desde }} a {{ proy.proy_hasta }} (3 meses), calculada con la tendencia lineal de los meses registrados.</p>
+    </div>
+    <div class="clave-grafico" aria-hidden="true">
+      <span><svg width="28" height="10"><line x1="2" y1="5" x2="26" y2="5" class="g-real"/></svg>Registrado</span>
+      <span><svg width="28" height="10"><line x1="2" y1="5" x2="26" y2="5" class="g-proy"/></svg>Proyectado</span>
+    </div>
+  </div>
+  {% if not proy.hay_datos %}
+    <p class="vacio">Todavía no hay datos de los últimos 6 meses para proyectar. Para probar, ejecute <code>python generar_datos_simulacion.py</code>.</p>
+  {% endif %}
+  <div class="graficos">
+    {% for g in proy.graficos %}
+    <figure class="grafico">
+      <figcaption>
+        <b>{{ g.titulo }}</b>
+        <span class="resumen-proy">
+          Último mes: <b>{{ '{:,}'.format(g.ultimo_real).replace(',', '.') }} {{ g.unidad }}</b> ·
+          en {{ proy.proy_hasta }}: <b>{{ '{:,}'.format(g.ultimo_proy).replace(',', '.') }} {{ g.unidad }}</b>
+          {% if g.variacion is not none %}<span class="variacion {{ 'sube' if g.variacion >= 0 else 'baja' }}">{{ '▲' if g.variacion >= 0 else '▼' }} {{ g.variacion | abs | round | int }}%</span>{% endif %}
+        </span>
+      </figcaption>
+      <svg viewBox="0 0 {{ g.ancho }} {{ g.alto }}" role="img" aria-label="{{ g.titulo }}: registrado y proyectado">
+        <rect x="{{ g.area_proy_x }}" y="8" width="{{ g.ancho - g.der - g.area_proy_x }}" height="{{ g.base - 8 }}" class="g-zona-proy"/>
+        <text x="{{ g.area_proy_x + 6 }}" y="22" text-anchor="start" class="g-etq-zona">proyección</text>
+        {% for m in g.marcas %}
+          <line x1="{{ g.izq }}" x2="{{ g.ancho - g.der }}" y1="{{ m.y }}" y2="{{ m.y }}" class="{{ 'g-base' if loop.first else 'g-grilla' }}"/>
+          <text x="{{ g.izq - 8 }}" y="{{ m.y + 4 }}" text-anchor="end" class="g-eje">{{ m.texto }}</text>
+        {% endfor %}
+        {% for p in g.puntos %}
+          <text x="{{ p.x }}" y="{{ g.alto - 10 }}" text-anchor="middle" class="g-eje{{ ' g-eje-proy' if p.proyectado }}">{{ p.mes }}</text>
+        {% endfor %}
+        <path d="{{ g.linea_proy }}" class="g-proy"/>
+        <path d="{{ g.linea_real }}" class="g-real"/>
+        {% for p in g.puntos %}
+          <g class="g-punto">
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="18" class="g-zona-hover"/>
+            <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ 5 if p.proyectado else 5.5 }}" class="{{ 'g-marca-proy' if p.proyectado else 'g-marca' }}"/>
+            <text x="{{ p.x }}" y="{{ p.y - 12 }}" text-anchor="middle" class="g-valor">{{ '{:,}'.format(p.valor).replace(',', '.') }}</text>
+            <title>{{ p.mes }}: {{ '{:,}'.format(p.valor).replace(',', '.') }} {{ g.unidad }}{{ ' (proyectado)' if p.proyectado else '' }}</title>
+          </g>
+        {% endfor %}
+      </svg>
+      <details>
+        <summary>Ver tabla</summary>
+        <div class="tabla-contenedor">
+        <table>
+          <thead><tr><th>Mes</th>{% for p in g.puntos %}<th class="num">{{ p.mes }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            <tr><td>{{ g.unidad | capitalize }}</td>{% for p in g.puntos %}<td class="num">{% if p.proyectado %}<i>{{ '{:,}'.format(p.valor).replace(',', '.') }}</i>{% else %}{{ '{:,}'.format(p.valor).replace(',', '.') }}{% endif %}</td>{% endfor %}</tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="nota">En cursiva, los valores proyectados.</p>
+      </details>
+    </figure>
+    {% endfor %}
+  </div>
+</section>
+<div class="cifras">
+  <div class="cifra"><span>{{ d.total }}</span>🤱 Madres donantes</div>
+  <div class="cifra"><span>{{ d.bebes }}</span>👶 Bebés</div>
+  <div class="cifra"><span>{{ d.internadas }}</span>Internadas ({{ porc(d.internadas, d.total) }})</div>
+  <div class="cifra"><span>{{ d.domicilio }}</span>En domicilio ({{ porc(d.domicilio, d.total) }})</div>
+  <div class="cifra"><span>{{ d.conjunta }}</span>Internación conjunta</div>
+  <div class="cifra"><span>{{ d.neonatologia }}</span>Neonatología</div>
+  <div class="cifra"><span>{{ d.padres_conviven }} / {{ d.padres }}</span>Padres que conviven ({{ porc(d.padres_conviven, d.padres) }})</div>
+  <div class="cifra"><span>{{ d.edad_padres or '-' }}</span>Edad promedio de los padres</div>
+  <div class="cifra"><span>{{ d.madres_riesgo }}</span>⚠️ Madres con factores de riesgo ({{ porc(d.madres_riesgo, d.total) }})</div>
+  <div class="cifra"><span>{{ d.madres_cronicas }}</span>🩺 Madres con patologías crónicas ({{ porc(d.madres_cronicas, d.total) }})</div>
+  <div class="cifra"><span>{{ d.bebes_riesgo }}</span>⚠️ Bebés con factores de riesgo ({{ porc(d.bebes_riesgo, d.bebes) }})</div>
+  <div class="cifra"><span>{{ d.bebes_cronicas }}</span>🩺 Bebés con patologías crónicas ({{ porc(d.bebes_cronicas, d.bebes) }})</div>
+</div>
+
+<section class="tarjeta tabla-riesgo">
+  <h2>⚠️ Madres donantes y bebés con factores de riesgo <span class="contador-riesgo">{{ riesgo | length }}</span></h2>
+  {% if riesgo %}
+  <div class="tabla-contenedor">
+  <table>
+    <thead>
+      <tr><th>Madre donante</th><th>Dirección</th><th>Barrio</th><th>Teléfono</th><th>Factores de riesgo de la madre</th><th>Bebé y factores de riesgo</th></tr>
+    </thead>
+    <tbody>
+      {% for r in riesgo %}
+      <tr>
+        <td><a href="{{ url_for('ver', madre_id=r.id) }}"><b>{{ r.apellido }}</b>, {{ r.nombre }}</a></td>
+        <td>{{ r.direccion or '' }}{% if r.localidad %}<br><small>{{ r.localidad }}</small>{% endif %}</td>
+        <td>{{ r.barrio or '' }}</td>
+        <td class="sin-corte">{{ r.telefono or '' }}</td>
+        <td>{{ r.riesgo_madre or '-' }}</td>
+        <td>
+          {% if r.riesgo_bebes %}{% for x in r.riesgo_bebes.split(' | ') %}{% set partes = x.split(': ', 1) %}<div><b>{{ partes[0] }}</b>: {{ partes[1] }}</div>{% endfor %}{% else %}-{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}<p class="vacio">No hay madres ni bebés con factores de riesgo registrados.</p>{% endif %}
+</section>
+
+<h2>🍼 Extracciones</h2>
+<div class="cifras">
+  <div class="cifra"><span>{{ d.total_ml | ml }}</span>Leche extraída en total</div>
+  <div class="cifra"><span>{{ d.extracciones }}</span>Extracciones</div>
+  <div class="cifra"><span>{{ d.estimulos }}</span>Estímulos</div>
+  <div class="cifra"><span>{{ d.promedio_ml | ml }}</span>Promedio por extracción</div>
+</div>
+<div class="columnas">
+  <section class="tarjeta">
+    <h2>🥛 Por tipo de leche</h2>
+    {% set pl = d.por_leche %}
+    {% if pl.total.anio.total %}
+    {% for periodo, titulo in [('mes', 'Mes de ' ~ pl.nombre_mes), ('anio', 'Año ' ~ pl.anio)] %}
+    <h3 class="periodo-titulo periodo-{{ periodo }}">{{ '📅' if periodo == 'mes' else '🗓️' }} {{ titulo }}</h3>
+    <table class="tabla-leche periodo-{{ periodo }}">
+      <thead><tr><th>Tipo</th><th class="num">Reg.</th><th class="num">Mililitros</th><th class="num">%</th></tr></thead>
+      <tbody>
+        {% for f in pl.filas %}
+        <tr>
+          <td><span class="etiqueta leche-{{ f.clave }}">{{ TIPOS_LECHE[f.clave] }}</span></td>
+          <td class="num">{{ f[periodo].total }}</td>
+          <td class="num">{{ f[periodo].ml | ml }}</td>
+          <td class="num">{{ f[periodo].pct }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><th>Total</th><th class="num">{{ pl.total[periodo].total }}</th><th class="num">{{ pl.total[periodo].ml | ml }}</th><th class="num">100%</th></tr></tfoot>
+    </table>
+    {% endfor %}
+    <p class="nota">El total del año vuelve a cero el 1 de enero.</p>
+    {% else %}<p class="vacio">Sin datos en {{ pl.anio }}.</p>{% endif %}
+  </section>
+  <section class="tarjeta">
+    <h2>🗓️ Mililitros por mes</h2>
+    {% if d.ml_por_mes %}
+    <table>
+      <thead><tr><th>Mes</th><th class="num">Mililitros</th><th></th></tr></thead>
+      <tbody>
+        {% set maximo = d.ml_por_mes | map(attribute='total') | max %}
+        {% for f in d.ml_por_mes %}
+        <tr>
+          <td>{{ f.mes | mes }}</td>
+          <td class="num">{{ f.total | ml }}</td>
+          <td class="barra-celda"><div class="barra-dato" style="width: {{ ((f.total * 100 / maximo) | round) if maximo else 0 }}%"></div></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="vacio">Sin datos.</p>{% endif %}
+  </section>
+</div>
+
+<h2>🧪 Preparaciones</h2>
+<div class="cifras">
+  <div class="cifra"><span>{{ d.preparaciones }}</span>Preparaciones realizadas</div>
+  <div class="cifra"><span>{{ d.prep_dosis }}</span>Dosis entregadas</div>
+  <div class="cifra"><span>{{ d.prep_ml | ml }}</span>Leche entregada</div>
+  <div class="cifra"><span>{{ d.prep_bebes }}</span>Bebés que recibieron</div>
+  <div class="cifra"><span>{{ d.prep_fortificadas }}</span>💪 Con leche fortificada</div>
+  <div class="cifra"><span>{{ d.prep_formula }}</span>🍼 Con leche de fórmula</div>
+  <div class="cifra"><span>{{ d.prep_servicio.get('maternidad', 0) }}</span>🤱 Para maternidad</div>
+  <div class="cifra"><span>{{ d.prep_servicio.get('neonatologia', 0) }}</span>🏥 Para neonatología</div>
+</div>
+{% if d.prep_tipo %}
+<section class="tarjeta">
+  <h2>Por tipo de preparación</h2>
+  <div class="tabla-contenedor">
+  <table>
+    <thead><tr><th>Preparación</th><th class="num">Veces</th><th class="num">Mililitros</th><th></th></tr></thead>
+    <tbody>
+      {% set maximo = d.prep_tipo | map(attribute='total') | max %}
+      {% for f in d.prep_tipo %}
+      <tr>
+        <td>{{ f.clave }}</td>
+        <td class="num">{{ f.total }}</td>
+        <td class="num">{{ f.ml | ml }}</td>
+        <td class="barra-celda"><div class="barra-dato" style="width: {{ (f.total * 100 / maximo) | round }}%"></div></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
+<h2>🌼 Otras actividades</h2>
+<div class="cifras">
+  {% for k, (nombre, icono, _) in ACTIVIDADES.items() %}
+  <div class="cifra"><span>{{ d.actividades.get(k, 0) }}</span>{{ icono }} {{ nombre }}</div>
+  {% endfor %}
+  <div class="cifra"><span>{{ d.actividades_mes }}</span>Actividades este mes</div>
+</div>
+
+<h2>🤱 Madres y familias</h2>
+
+<div class="columnas">
+  {% for titulo, filas, etiqueta in [("🏘️ Por barrio", d.por_barrio, "Barrio"), ("📍 Por localidad", d.por_localidad, "Localidad"), ("🗓️ Registros por mes", d.por_mes, "Mes")] %}
+  <section class="tarjeta">
+    <h2>{{ titulo }}</h2>
+    {% if filas %}
+    <table>
+      <thead><tr><th>{{ etiqueta }}</th><th class="num">Madres</th><th></th></tr></thead>
+      <tbody>
+        {% set maximo = filas | map(attribute='total') | max %}
+        {% for f in filas %}
+        <tr>
+          <td>{{ f[0] | mes }}</td>
+          <td class="num">{{ f.total }}</td>
+          <td class="barra-celda"><div class="barra-dato" style="width: {{ (f.total * 100 / maximo) | round }}%"></div></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="vacio">Sin datos.</p>{% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

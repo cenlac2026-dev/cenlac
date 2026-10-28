@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block titulo %}{{ madre.apellido }}, {{ madre.nombre }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <h1>{{ madre.apellido }}, {{ madre.nombre }}</h1>
+  <div>
+    {% if puede('editar') %}<a class="boton p-editar" href="{{ url_for('editar', madre_id=madre.id) }}">✏️ Editar</a>{% endif %}
+    {% if puede('eliminar') %}<form method="post" action="{{ url_for('eliminar', madre_id=madre.id) }}" class="en-linea p-eliminar"
+          onsubmit="return confirm('¿Eliminar este registro con sus bebés y padre? No se puede deshacer.');">
+      <button type="submit" class="peligro">Eliminar</button>
+    </form>{% endif %}
+  </div>
+</div>
+
+<section class="tarjeta">
+  <h2>🤱 Madre</h2>
+  <dl>
+    {% if puede('completo') %}<dt class="p-completo">DNI</dt><dd class="p-completo">{{ madre.dni }}</dd>
+    <dt class="p-completo">Fecha de nacimiento</dt><dd class="p-completo">{{ madre.fecha_nacimiento | fecha }}{% if madre.fecha_nacimiento %} ({{ madre.fecha_nacimiento | edad }} años){% endif %}</dd>
+    <dt class="p-completo">Teléfono</dt><dd class="p-completo">{{ madre.telefono }}</dd>
+    <dt class="p-completo">Dirección</dt><dd class="p-completo">{{ madre.direccion }}</dd>{% endif %}
+    <dt>Barrio</dt><dd>{{ madre.barrio }}</dd>
+    <dt>Localidad</dt><dd>{{ madre.localidad }}</dd>
+    <dt>Situación</dt><dd>{{ SITUACIONES[madre.situacion] }}{% if madre.tipo_internacion %}: {{ INTERNACIONES[madre.tipo_internacion] }}{% endif %}</dd>
+    <dt>Fecha de registro</dt><dd>{{ madre.fecha_registro | fecha }}</dd>
+    <dt>Leche donada</dt><dd><b>{{ ext.total_ml | ml }}</b> en {{ ext.cantidad }} registro(s)</dd>
+    {% if madre.fecha_alta %}<dt>Alta</dt><dd>🎓 {{ madre.fecha_alta | fecha }}</dd>{% endif %}
+    {% if puede('completo') %}<dt class="p-completo">Factores de riesgo</dt><dd class="p-completo">{% if madre.factores_riesgo %}<span class="salud riesgo">⚠️ {{ madre.factores_riesgo }}</span>{% else %}<span class="nota">Sin datos</span>{% endif %}</dd>
+    <dt class="p-completo">Patologías crónicas</dt><dd class="p-completo">{% if madre.patologias_cronicas %}<span class="salud cronica">🩺 {{ madre.patologias_cronicas }}</span>{% else %}<span class="nota">Sin datos</span>{% endif %}</dd>
+    {% if madre.observaciones %}<dt class="p-completo">Observaciones</dt><dd class="p-completo">{{ madre.observaciones }}</dd>{% endif %}{% endif %}
+  </dl>
+</section>
+
+{% if puede('completo') %}
+<section class="tarjeta consentimiento p-completo {{ 'falta' if not madre.consentimiento_archivo }}" id="consentimiento">
+  <h2>📝 Consentimiento informado</h2>
+  {% if madre.consentimiento_archivo %}
+    {% set es_pdf = madre.consentimiento_archivo.lower().endswith('.pdf') %}
+    <div class="consentimiento-cargado">
+      <a class="consentimiento-vista" href="{{ url_for('ver_consentimiento', madre_id=madre.id) }}" target="_blank" rel="noopener">
+        {% if es_pdf %}<span class="consentimiento-pdf">📄 PDF</span>{% else %}<img src="{{ url_for('ver_consentimiento', madre_id=madre.id) }}" alt="Foto del consentimiento informado de {{ madre.nombre }} {{ madre.apellido }}">{% endif %}
+      </a>
+      <div>
+        <p>✅ Cargado{% if madre.consentimiento_fecha %} · firmado el {{ madre.consentimiento_fecha | fecha }}{% endif %}{% if madre.consentimiento_subido %}<br><small>Subido el {{ madre.consentimiento_subido[:10] | fecha }} a las {{ madre.consentimiento_subido[11:16] }}</small>{% endif %}</p>
+        <a class="boton boton-chico" href="{{ url_for('ver_consentimiento', madre_id=madre.id) }}" target="_blank" rel="noopener">🔍 Ver {{ 'PDF' if es_pdf else 'foto' }} completa</a>
+        {% if puede('editar') %}<form method="post" action="{{ url_for('eliminar_consentimiento', madre_id=madre.id) }}" class="en-linea p-editar" data-demo="quitar-consentimiento"
+              onsubmit="return confirm('¿Quitar el archivo del consentimiento?');">
+          <button type="submit" class="secundario">Quitar archivo</button>
+        </form>{% endif %}
+      </div>
+    </div>
+  {% else %}
+    <p class="aviso aviso-error">⚠️ Falta cargar el consentimiento informado de la donante.</p>
+  {% endif %}
+  {% if puede('editar') %}<form method="post" action="{{ url_for('subir_consentimiento', madre_id=madre.id) }}" enctype="multipart/form-data" class="grilla form-consentimiento p-editar" data-demo="consentimiento">
+    <label>{{ 'Reemplazar por otro archivo' if madre.consentimiento_archivo else 'Foto o PDF del consentimiento firmado' }}<input type="file" name="consentimiento" accept="image/*,application/pdf" required></label>
+    <label>Fecha de firma<input type="date" name="consentimiento_fecha" value="{{ madre.consentimiento_fecha or '' }}"></label>
+    <div><button type="submit">📤 Subir</button></div>
+  </form>{% endif %}
+</section>
+{% endif %}
+
+<section class="tarjeta">
+  <h2>👶 Bebé(s)</h2>
+  {% if bebes %}
+  <ul>
+    {% for b in bebes %}
+      <li>
+        <b>{{ b.nombre }} {{ b.apellido_materno }}</b>{% if b.fecha_nacimiento %}, nacido/a el {{ b.fecha_nacimiento | fecha }}{% endif %}
+        {% set cr = crec[b.id] %}
+        {% if puede('completo') %}<div class="p-completo">
+        {% if cr.info.sexo or cr.info.eg_semanas %}<br><small>{{ SEXOS.get(cr.info.sexo, '') }}{% if cr.info.eg_semanas %}{{ ' · ' if cr.info.sexo }}EG {{ cr.info.eg_semanas }}+{{ cr.info.eg_dias }} semanas{% if cr.info.prematuro %} (prematuro/a){% endif %}{% endif %}{% if b.peso_nacimiento %} · {{ b.peso_nacimiento | int }} g al nacer{% endif %}</small>{% endif %}
+        <div class="crec-resumen">
+          <a class="boton boton-chico" href="{{ url_for('crecimiento_bebe', bebe_id=b.id) }}">📈 Curva de percentiles</a>
+          {% if cr.ultimo %}<span>Último peso: <b>{{ cr.ultimo.peso | int }} g</b> ({{ cr.ultimo.fecha | fecha }}){% if cr.p and cr.p.percentil is defined %} · <b>{{ cr.p.percentil | pct }}</b>{% endif %} · {{ cr.cantidad }} control(es)</span>
+          {% else %}<span class="nota">Sin controles de peso todavía.</span>{% endif %}
+        </div>
+        {% if b.factores_riesgo or b.patologias_cronicas %}
+        <div class="salud-bebe">
+          {% if b.factores_riesgo %}<span class="salud riesgo">⚠️ Factores de riesgo: {{ b.factores_riesgo }}</span>{% endif %}
+          {% if b.patologias_cronicas %}<span class="salud cronica">🩺 Patologías crónicas: {{ b.patologias_cronicas }}</span>{% endif %}
+        </div>
+        {% endif %}
+        </div>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="vacio">Sin bebés registrados.</p>{% endif %}
+</section>
+
+{% if puede('completo') %}
+<section class="tarjeta p-completo">
+  <h2>👨 Padre</h2>
+  {% if padre %}
+  <dl>
+    <dt>Nombre y apellido</dt><dd>{{ padre.nombre }} {{ padre.apellido }}</dd>
+    <dt>Edad</dt><dd>{{ padre.edad if padre.edad is not none else '' }}</dd>
+    <dt>¿Convive con la madre?</dt><dd>{{ 'Sí' if padre.convive else 'No' }}</dd>
+  </dl>
+  {% else %}<p class="vacio">Sin datos del padre.</p>{% endif %}
+</section>
+<section class="tarjeta alta p-completo {{ 'alta-hecha' if madre.fecha_alta }}" id="alta">
+  {% if madre.fecha_alta %}
+  <div class="encabezado">
+    <div>
+      <h2>🎓 Alta registrada el {{ madre.fecha_alta | fecha }}</h2>
+      <p class="nota">{{ madre.alta_observaciones or 'Sin indicaciones adicionales.' }}</p>
+    </div>
+    <div class="acciones">
+      <a class="boton" href="{{ url_for('alta_pdf', madre_id=madre.id) }}" data-descarga>⬇️ Descargar reconocimiento y guía (PDF)</a>
+      {% if puede('editar') %}<form method="post" action="{{ url_for('anular_alta', madre_id=madre.id) }}" class="en-linea p-editar">
+        <button type="submit" class="secundario">Anular alta</button>
+      </form>{% endif %}
+    </div>
+  </div>
+  {% else %}
+  <h2>🎓 Dar el alta a la mamá y al bebé</h2>
+  <p class="nota">Al dar el alta se genera un PDF con el reconocimiento como mamá donante, un agradecimiento y una guía simple: consejería en lactancia, tacto mamario, vacunas y métodos anticonceptivos.</p>
+  {% if puede('editar') %}<form method="post" action="{{ url_for('dar_alta', madre_id=madre.id) }}" class="form-extraccion p-editar">
+    <div class="grilla">
+      <label>Fecha de alta<input type="date" name="fecha_alta" id="alta-fecha" value="{{ hoy }}" required></label>
+      <label class="ancho">Indicaciones del equipo (se imprimen en la guía)<textarea name="alta_observaciones" id="alta-obs" rows="2" placeholder="Ej.: control en el centro de salud a las 72 horas, seguir con lactancia exclusiva"></textarea></label>
+    </div>
+    <div class="acciones"><button type="submit">🎓 Dar de alta</button>
+      <a href="{{ url_for('alta_pdf', madre_id=madre.id) }}" data-descarga>Ver ejemplo del PDF</a></div>
+  </form>{% endif %}
+  {% endif %}
+</section>
+
+<section class="tarjeta p-completo" id="extracciones">
+  <div class="encabezado">
+    <h2>🍼 Extracciones y estímulos</h2>
+    <div class="mini-cifras">
+      <span><b>{{ ext.cantidad }}</b>registros</span>
+      <span><b>{{ ext.total_ml | ml }}</b>total</span>
+    </div>
+  </div>
+  {% if etiqueta_nueva %}{% set e = etiqueta_nueva %}
+  <div class="etiqueta-nueva" id="etiqueta-nueva">
+    <div class="etiqueta-qr">{{ e.svg | safe }}</div>
+    <div class="etiqueta-datos">
+      <b>🏷️ Etiqueta del registro N° {{ e.id }}</b>
+      <span>{{ e.madre }}</span>
+      <span><span class="etiqueta leche-{{ e.tipo_leche }}">{{ e.leche }}</span> · <b>{{ e.cantidad }}</b></span>
+      <span>{{ e.fecha }} · {{ e.hora }} h</span>
+      <div class="etiqueta-acciones">
+        <a class="boton boton-chico" href="{{ url_for('etiqueta_extraccion', ext_id=e.id, imprimir=1) }}" target="_blank" rel="noopener">🖨️ Imprimir etiqueta</a>
+        <a class="cerrar-etiqueta" href="{{ url_for('ver', madre_id=madre.id) }}#extracciones">Cerrar</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% if puede('editar') %}<form method="post" action="{{ url_for('nueva_extraccion', madre_id=madre.id) }}" class="form-extraccion p-editar">
+    <div class="grilla">
+      <label>Fecha<input type="date" name="fecha" id="ext-fecha" value="{{ hoy }}" required></label>
+      <label>Hora<input type="time" name="hora" id="ext-hora" value="{{ ahora }}" required></label>
+      <label>Cantidad (ml)<input type="number" name="cantidad_ml" id="ext-ml" min="0" max="2000" step="0.5" inputmode="decimal" placeholder="Ej.: 30"></label>
+    </div>
+    <div class="opciones">
+      <span>Registro:</span>
+      {% for k, v in TIPOS_REGISTRO.items() %}
+        <label class="opcion"><input type="radio" name="tipo" value="{{ k }}" {{ 'checked' if loop.first }} required> {{ v }}</label>
+      {% endfor %}
+    </div>
+    <div class="opciones">
+      <span>Tipo de leche:</span>
+      {% for k, v in TIPOS_LECHE.items() %}
+        <label class="opcion leche-{{ k }}"><input type="radio" name="tipo_leche" value="{{ k }}"> {{ v }}</label>
+      {% endfor %}
+    </div>
+    <div class="grilla">
+      <label class="ancho">Características de la leche<input name="caracteristicas" id="ext-caract" placeholder="Color, aspecto, olor, presencia de sangre, etc."></label>
+    </div>
+    <div class="acciones"><button type="submit">➕ Agregar registro</button></div>
+  </form>{% endif %}
+
+  {% if ext.dias %}
+  {% for d in ext.dias %}
+  <div class="dia-extraccion">
+    <h3>{{ d.dia | fecha }} <small>{{ d.registros | length }} registro(s) · {{ d.total_ml | ml }}</small></h3>
+    <div class="tabla-contenedor">
+    <table>
+      <thead><tr><th>Hora</th><th>Registro</th><th class="num">Cantidad</th><th>Leche</th><th>Características</th><th></th></tr></thead>
+      <tbody>
+        {% for r in d.registros %}
+        <tr>
+          <td><b>{{ r.fecha_hora | hora }}</b></td>
+          <td>{{ TIPOS_REGISTRO[r.tipo] }}</td>
+          <td class="num">{{ r.cantidad_ml | ml }}</td>
+          <td>{% if r.tipo_leche %}<span class="etiqueta leche-{{ r.tipo_leche }}">{{ TIPOS_LECHE[r.tipo_leche] }}</span>{% endif %}</td>
+          <td>{{ r.caracteristicas or '' }}</td>
+          <td class="num">
+            <a class="boton-qr" href="{{ url_for('etiqueta_extraccion', ext_id=r.id) }}" target="_blank" rel="noopener" title="Etiqueta con código QR">🏷️ QR</a>
+            {% if puede('editar') %}<form method="post" action="{{ url_for('eliminar_extraccion', ext_id=r.id) }}" class="en-linea p-editar">
+              <button type="submit" class="quitar" title="Eliminar registro">✕</button>
+            </form>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}<p class="vacio">Todavía no hay extracciones registradas.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

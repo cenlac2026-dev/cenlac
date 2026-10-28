@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Sin permiso{% endblock %}
+{% block contenido %}
+<div class="vacio-grande">
+  <div>🔒</div>
+  <p>Su perfil{% if usuario_actual %} (<b>{{ ROLES[usuario_actual.rol] }}</b>){% endif %} no tiene acceso a esta pantalla.</p>
+  <a class="boton" href="{{ url_for('listado') }}">Volver al inicio</a>
+</div>
+{% endblock %}

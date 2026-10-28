@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}Mi contraseña{% endblock %}
+{% block contenido %}
+<section class="tarjeta caja-ingreso">
+  <h1>🔑 Cambiar mi contraseña</h1>
+  <form method="post" class="formulario-ingreso">
+    <label>Contraseña actual<input type="password" name="actual" autocomplete="current-password" required></label>
+    <label>Contraseña nueva<input type="password" name="clave" autocomplete="new-password" minlength="6" required></label>
+    <label>Repetir contraseña nueva<input type="password" name="repetir" autocomplete="new-password" minlength="6" required></label>
+    <button type="submit">Guardar</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block titulo %}Instalar la aplicación{% endblock %}
+{% block contenido %}
+<div class="encabezado"><h1>📲 Instalar CENLAC</h1></div>
+
+<section class="bienvenida instalar-cabecera">
+  <img src="{{ url_for('static', filename='iconos/icono-192.png') }}" alt="" width="88" height="88">
+  <div>
+    <h2>CENLAC como aplicación, con su ícono de la gota</h2>
+    <p>Se instala desde el navegador en la PC y en el celular, sin tiendas ni descargas. Se abre en su propia ventana y siempre muestra los datos al día{% if en_internet %}, guardados en Supabase{% else %} del servidor del centro{% endif %}. No guarda datos de las madres en el dispositivo.</p>
+    <button type="button" class="boton" id="boton-instalar" hidden>⬇️ Instalar en este equipo</button>
+    <p class="nota" id="ya-instalada" hidden>✅ Ya está abierta como aplicación en este equipo.</p>
+  </div>
+</section>
+
+<div class="columnas instalar-pasos">
+  <section class="tarjeta">
+    <h2>📱 En el celular</h2>
+    <p>{% if en_internet %}Funciona con WiFi o datos móviles, desde cualquier lugar.{% else %}El celular tiene que estar conectado al <b>WiFi del centro</b>.{% endif %} Escanee este código con la cámara:</p>
+    <div class="instalar-qr">{{ qr | safe }}</div>
+    <p class="instalar-url"><code>{{ url }}</code></p>
+    <h3>Android (Chrome)</h3>
+    <ol>
+      <li>Abra el enlace e ingrese con su usuario.</li>
+      <li>Toque el menú <b>⋮</b> y elija <b>Agregar a la pantalla principal</b> (o <b>Instalar aplicación</b>).</li>
+      <li>Confirme con <b>Agregar</b>. Aparece la gota de CENLAC junto a sus otras apps.</li>
+    </ol>
+    <h3>iPhone (Safari)</h3>
+    <ol>
+      <li>Abra el enlace en <b>Safari</b> e ingrese con su usuario.</li>
+      <li>Toque <b>Compartir</b> (el cuadrado con la flecha) y elija <b>Agregar a inicio</b>.</li>
+      <li>Toque <b>Agregar</b>.</li>
+    </ol>
+  </section>
+
+  <section class="tarjeta">
+    <h2>💻 En la PC</h2>
+    <h3>Google Chrome</h3>
+    <ol>
+      <li>Abra <code>{{ url }}</code> e ingrese.</li>
+      <li>Toque el ícono de instalar en la barra de direcciones (una pantalla con flecha) o el menú <b>⋮</b> &gt; <b>Transmitir, guardar y compartir</b> &gt; <b>Instalar página como aplicación</b>{% if not segura %} (en las PC de la red: <b>Crear acceso directo…</b> y marcar <b>Abrir como ventana</b>){% endif %}.</li>
+      <li>Queda la gota de CENLAC en el escritorio y en el menú Inicio.</li>
+    </ol>
+    <h3>Microsoft Edge</h3>
+    <ol>
+      <li>Abra <code>{{ url }}</code> e ingrese.</li>
+      <li>Menú <b>…</b> &gt; <b>Aplicaciones</b> &gt; <b>Instalar este sitio como una aplicación</b>.</li>
+      <li>Confirme con <b>Instalar</b>. Se puede anclar a la barra de tareas.</li>
+    </ol>
+    <h3>Ventanita de escritorio</h3>
+    <p>Para dejar la vista mini siempre a mano, abra <a href="{{ url_for('widget') }}" target="_blank" rel="noopener">🗔 Mini</a> y toque <b>📌 Acceso directo</b>.</p>
+    {% if not en_internet %}<p class="nota">La PC servidor tiene que estar encendida y con CENLAC abierto para que funcione en los demás equipos.</p>{% endif %}
+  </section>
+</div>
+<script>
+  (function () {
+    var boton = document.getElementById('boton-instalar'), aviso;
+    if (window.matchMedia('(display-mode: standalone)').matches) document.getElementById('ya-instalada').hidden = false;
+    window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); aviso = e; boton.hidden = false; });
+    boton.addEventListener('click', function () { if (aviso) { aviso.prompt(); aviso = null; boton.hidden = true; } });
+  })();
+</script>
+{% endblock %}

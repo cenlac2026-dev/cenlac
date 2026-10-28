@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block contenido %}
+<section class="bienvenida">
+  <img class="ilustracion" src="{{ url_for('static', filename='ilustracion-bebe.svg') }}" alt="">
+  <div>
+    <h1>¡Hola! Qué lindo tenerte por acá</h1>
+    <p>Este es el registro de las mamás que donan su leche, de sus bebés y de sus familias.</p>
+    <span class="frase">Cada gota donada es un abrazo para un bebé 💜</span>
+  </div>
+  <div class="mini-cifras acumulados">
+    {% for icono, titulo, clave in [('🤱', 'Madres', 'madres'), ('👶', 'Bebés', 'bebes'), ('🍼', 'Extracciones', 'extracciones')] %}
+    <div class="acumulado">
+      <div class="acum-titulo">{{ icono }} {{ titulo }}</div>
+      <div class="acum-valores">
+        <span><b>{{ resumen.mes[clave] }}</b>en {{ resumen.nombre_mes }}</span>
+        <span><b>{{ resumen.anio[clave] }}</b>en {{ resumen.anio_actual }}</span>
+      </div>
+      {% if clave == 'extracciones' %}<small>{{ resumen.mes.ml | ml }} en el mes · {{ resumen.anio.ml | ml }} en el año</small>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% if puede('editar') %}<a class="boton p-editar" href="{{ url_for('nueva') }}">➕ Registrar madre</a>{% endif %}
+</section>
+
+<form class="filtros" method="get" data-inicio-mes="{{ inicio_mes }}">
+  <input type="search" name="q" value="{{ q }}" placeholder="🔍 Buscar por apellido, nombre, {{ 'DNI, ' if puede('completo') }}barrio o localidad">
+  <select name="ver" data-auto-enviar aria-label="Qué madres mostrar">
+    {% for k, v in vistas.items() if k != 'riesgo' or puede('completo') %}
+      <option value="{{ k }}" class="{{ 'p-completo' if k == 'riesgo' }}" {{ 'selected' if ver == k }}>{{ v }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Buscar</button>
+</form>
+<p class="nota alcance">{% if q %}Resultados de la búsqueda en todas las madres registradas.{% elif ver == 'todas' %}Mostrando todas las madres registradas.{% else %}Mostrando las madres que todavía no tienen alta{% if ver == 'riesgo' %}, con patologías crónicas o factores de riesgo (propios o del bebé){% elif ver %} ({{ vistas[ver] | lower }}){% endif %}.{% endif %}</p>
+{% if madres %}
+<div class="tabla-contenedor">
+<table>
+  <thead>
+    <tr><th>Apellido y nombre</th>{% if puede('completo') %}<th class="p-completo">DNI</th>{% endif %}<th>Barrio</th><th>Localidad</th><th>Situación</th><th>Bebés</th><th class="num">Leche donada</th><th>Registro</th></tr>
+  </thead>
+  <tbody>
+    {% for m in madres %}
+    <tr data-riesgo="{{ 1 if m.con_riesgo else 0 }}" data-alta="{{ m.fecha_alta or '' }}" data-registro="{{ m.fecha_registro }}">
+      <td><a href="{{ url_for('ver', madre_id=m.id) }}"><b>{{ m.apellido }}</b>, {{ m.nombre }}</a></td>
+      {% if puede('completo') %}<td class="p-completo">{{ m.dni }}</td>{% endif %}
+      <td>{{ m.barrio }}</td>
+      <td>{{ m.localidad }}</td>
+      <td>
+        <span class="etiqueta {{ m.situacion }}">{{ '🏥' if m.situacion == 'internada' else '🏠' }} {{ SITUACIONES[m.situacion] }}</span>
+        {% if m.tipo_internacion %}<br><small>{{ INTERNACIONES[m.tipo_internacion] }}</small>{% endif %}
+        {% if m.con_riesgo and puede('completo') %}<span class="p-completo"><br><span class="etiqueta etiqueta-riesgo">⚠️ Riesgo</span></span>{% endif %}
+        {% if m.fecha_alta %}<br><span class="etiqueta etiqueta-alta">🎓 Alta {{ m.fecha_alta | fecha }}</span>{% endif %}
+      </td>
+      <td>👶 {{ m.cant_bebes }}</td>
+      <td class="num">{{ m.total_ml | ml }}</td>
+      <td>{{ m.fecha_registro | fecha }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="nota">{{ madres|length }} registro(s).</p>
+{% else %}
+<div class="vacio-grande">
+  <div>🌙</div>
+  <p>{% if q or ver %}No encontramos mamás con ese criterio. Probá con otra búsqueda.{% elif resumen.madres_total %}Todas las mamás ya tienen alta. Elegí "Todas" para ver el histórico.{% else %}Todavía no hay mamás registradas. ¡Sumemos la primera!{% endif %}</p>
+  {% if not q and not ver and not resumen.madres_total and puede('editar') %}<a class="boton" href="{{ url_for('nueva') }}">Registrar la primera madre</a>{% endif %}
+</div>
+{% endif %}
+<script>
+  document.querySelectorAll('[data-auto-enviar]').forEach(function (sel) {
+    sel.addEventListener('change', function () { sel.form.requestSubmit ? sel.form.requestSubmit() : sel.form.submit(); });
+  });
+</script>
+{% endblock %}

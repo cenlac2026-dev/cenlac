@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block titulo %}Otras actividades{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <h1>🌼 Otras actividades</h1>
+  <div class="mini-cifras">
+    {% for k, (nombre, icono, _) in ACTIVIDADES.items() %}
+      <span><b>{{ conteo.get(k, 0) }}</b>{{ icono }} {{ nombre }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<form method="post" class="formulario" id="form-actividad">
+  <fieldset>
+    <legend>➕ Registrar actividad</legend>
+    <div class="opciones selector-actividad">
+      {% for k, (nombre, icono, ayuda) in ACTIVIDADES.items() %}
+        <label class="opcion"><input type="radio" name="tipo" value="{{ k }}" data-ayuda="{{ ayuda }}" {{ 'checked' if tipo_elegido == k }} required> {{ icono }} {{ nombre }}</label>
+      {% endfor %}
+    </div>
+    <div class="grilla">
+      <label>Fecha<input type="date" name="fecha" id="act-fecha" value="{{ hoy }}" required></label>
+      <label>Hora<input type="time" name="hora" id="act-hora" value="{{ ahora }}" required></label>
+    </div>
+    <div class="grilla campo-tipo" data-para="educacion">
+      <label>Nombre de la persona a quien se dirige *<input name="destinatario_nombre" id="act-nombre"></label>
+      <label>Apellido *<input name="destinatario_apellido" id="act-apellido"></label>
+    </div>
+    <div class="grilla campo-tipo" data-para="limpieza">
+      <label class="ancho">Material utilizado *<input name="material" id="act-material" placeholder="Ej.: alcohol al 70%, detergente enzimático, hipoclorito, paños descartables"></label>
+    </div>
+    <div class="grilla campo-tipo" data-para="salida">
+      <label class="ancho">Lugar o destino *<input name="lugar" id="act-lugar" placeholder="Ej.: domicilio de la mamá (barrio), CAPS Villa Norte, escuela N° 12"></label>
+    </div>
+    <div class="grilla">
+      <label class="ancho"><span id="act-desc-titulo">Descripción</span>
+        <textarea name="descripcion" id="act-descripcion" rows="3"></textarea>
+      </label>
+    </div>
+    <div class="acciones"><button type="submit">💾 Guardar actividad</button></div>
+  </fieldset>
+</form>
+
+<div class="encabezado">
+  <h2>Actividades registradas</h2>
+  <form method="get" class="filtros">
+    <select name="filtro" onchange="this.form.submit()">
+      <option value="">Todas las actividades</option>
+      {% for k, (nombre, icono, _) in ACTIVIDADES.items() %}
+        <option value="{{ k }}" {{ 'selected' if filtro == k }}>{{ icono }} {{ nombre }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+{% if actividades %}
+<div class="tabla-contenedor">
+<table class="tabla-actividades">
+  <thead><tr><th>Fecha</th><th>Actividad</th><th>Detalle</th><th>Descripción</th><th></th></tr></thead>
+  <tbody>
+    {% for a in actividades %}
+    <tr data-tipo="{{ a.tipo }}">
+      <td><b>{{ a.fecha_hora[:10] | fecha }}</b><br><small>{{ a.fecha_hora | hora }}</small></td>
+      <td><span class="etiqueta act-{{ a.tipo }}">{{ ACTIVIDADES[a.tipo][1] }} {{ ACTIVIDADES[a.tipo][0] }}</span></td>
+      <td>
+        {% if a.tipo == 'educacion' %}Dirigida a <b>{{ a.destinatario_nombre }} {{ a.destinatario_apellido }}</b>
+        {% elif a.tipo == 'limpieza' %}Material: {{ a.material }}
+        {% elif a.tipo == 'salida' %}Destino: <b>{{ a.lugar }}</b>{% endif %}
+      </td>
+      <td>{{ a.descripcion or '' }}</td>
+      <td class="num">
+        <form method="post" action="{{ url_for('eliminar_actividad', act_id=a.id) }}" class="en-linea">
+          <button type="submit" class="quitar" title="Eliminar actividad">✕</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="vacio-grande"><div>🌼</div><p>No hay actividades registradas{% if filtro %} de este tipo{% endif %}.</p></div>
+{% endif %}
+
+<script>
+  (function () {
+    const form = document.getElementById('form-actividad');
+    const titulo = document.getElementById('act-desc-titulo');
+    const desc = document.getElementById('act-descripcion');
+    function actualizar() {
+      const sel = form.querySelector('input[name="tipo"]:checked');
+      const tipo = sel ? sel.value : '';
+      form.querySelectorAll('.campo-tipo').forEach(b => {
+        const visible = b.dataset.para === tipo;
+        b.hidden = !visible;
+        b.querySelectorAll('input').forEach(i => i.required = visible);
+      });
+      titulo.textContent = sel ? 'Descripción de ' + sel.parentElement.textContent.trim().replace(/^\S+\s/, '').toLowerCase() : 'Descripción';
+      desc.placeholder = sel ? sel.dataset.ayuda : '';
+    }
+    form.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', actualizar));
+    actualizar();
+  })();
+</script>
+{% endblock %}

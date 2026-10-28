@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CENLAC · Mini</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+  <link rel="icon" href="{{ url_for('static', filename='iconos/centro-lactancia.ico') }}" sizes="any">
+  <link rel="icon" href="{{ url_for('static', filename='iconos/icono.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='iconos/apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <meta name="theme-color" content="#a48fdc">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body class="widget" data-ultima-novedad="{{ ultima_novedad }}">
+  <header class="w-barra">
+    <img src="{{ url_for('static', filename='logo.svg') }}" alt="" width="30" height="30">
+    <div class="w-titulo">CENLAC<small>Centro de Lactancia · {{ resumen.nombre_mes | capitalize }} {{ resumen.anio_actual }}</small></div>
+    <span class="w-reloj" id="w-reloj">{{ ahora.strftime('%H:%M') }}</span>
+  </header>
+
+  <section class="w-cifras">
+    {% for icono, titulo, clave in [('🤱', 'Madres', 'madres'), ('👶', 'Bebés', 'bebes'), ('🍼', 'Extracc.', 'extracciones')] %}
+    <div class="w-cifra">
+      <span class="w-etq">{{ icono }} {{ titulo }}</span>
+      <b>{{ resumen.mes[clave] }}</b>
+      <small>{{ resumen.anio[clave] }} en el año</small>
+    </div>
+    {% endfor %}
+  </section>
+  <p class="w-leche">💧 <b>{{ resumen.mes.ml | ml }}</b> donados en el mes · {{ resumen.anio.ml | ml }} en el año</p>
+
+  <div class="w-lista-cab">
+    <span>Madres activas <b>{{ madres | length }}</b></span>
+    <input type="search" id="w-buscar" placeholder="🔍 Buscar" aria-label="Buscar madre">
+  </div>
+  <ul class="w-lista">
+    {% for m in madres %}
+    <li>
+      <details>
+        <summary>
+          <span class="w-punto {{ m.situacion }}" title="{{ SITUACIONES[m.situacion] }}"></span>
+          <span class="w-nombre"><b>{{ m.apellido }}</b>, {{ m.nombre }}</span>
+          <span class="w-ml">{{ m.total_ml | ml }}</span>
+        </summary>
+        <dl>
+          <dt>Situación</dt><dd>{{ SITUACIONES[m.situacion] }}{% if m.tipo_internacion %} · {{ INTERNACIONES[m.tipo_internacion] }}{% endif %}</dd>
+          <dt>Barrio</dt><dd>{{ m.barrio or '-' }}{% if m.localidad %}, {{ m.localidad }}{% endif %}</dd>
+          <dt>Bebé(s)</dt><dd>{{ (bebes.get(m.id) or ['-']) | join(', ') }}</dd>
+          <dt>Registro</dt><dd>{{ m.fecha_registro | fecha }}</dd>
+          <dt>Última extracción</dt><dd>{% if m.ultima %}{{ m.ultima[:10] | fecha }} {{ m.ultima | hora }}{% else %}-{% endif %}</dd>
+        </dl>
+      </details>
+    </li>
+    {% else %}
+    <li class="w-vacio">No hay madres activas.</li>
+    {% endfor %}
+    <li class="w-vacio" id="w-sin-resultados" hidden>Sin resultados.</li>
+  </ul>
+
+  <footer class="w-pie">
+    <span>👤 {{ usuario_actual.nombre }} · <span class="w-act">act. {{ ahora.strftime('%H:%M') }}</span></span>
+    <span>
+      <a href="{{ url_for('widget_acceso_directo') }}" title="Descarga un acceso directo para abrir esta ventanita en Windows">📌 Acceso directo</a>
+      {% if puede('completo') %}<a class="p-completo" href="{{ url_for('listado') }}" target="_blank" rel="noopener">Abrir completo</a>{% endif %}
+      <a href="{{ url_for('usuarios.salir') }}">Salir</a>
+    </span>
+  </footer>
+  <script>
+    (function () {
+      var buscar = document.getElementById('w-buscar');
+      var filas = document.querySelectorAll('.w-lista li:not(.w-vacio)');
+      buscar.addEventListener('input', function () {
+        var q = buscar.value.trim().toLowerCase(), n = 0;
+        filas.forEach(function (li) { var ok = !q || li.textContent.toLowerCase().indexOf(q) >= 0; li.hidden = !ok; if (ok) n++; });
+        document.getElementById('w-sin-resultados').hidden = n > 0 || !filas.length;
+      });
+      var reloj = document.getElementById('w-reloj');
+      setInterval(function () { var d = new Date(); reloj.textContent = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }, 15000);
+      // Los cambios de los demás llegan en vivo (envivo.js). Además, se recarga cada 2 minutos por las dudas,
+      // salvo que se esté buscando o mirando el detalle de una madre.
+      setInterval(function () {
+        if (!buscar.value && !document.querySelector('.w-lista details[open]')) location.reload();
+      }, 120000);
+    })();
+  </script>
+  <script src="{{ url_for('static', filename='envivo.js') }}" defer></script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () {});</script>
+</body>
+</html>

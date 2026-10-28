@@ -1,0 +1,47 @@
+{
+  "name": "CENLAC - Centro de Lactancia",
+  "short_name": "CENLAC",
+  "description": "CENLAC: registro de madres donantes del Centro de Lactancia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf8ff",
+  "theme_color": "#a48fdc",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/static/iconos/icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/iconos/icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/iconos/icono-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/iconos/icono.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "id": "/",
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Vista mini",
+      "url": "/widget",
+      "icons": [
+        {
+          "src": "/static/iconos/icono-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

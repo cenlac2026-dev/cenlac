@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block titulo %}Cierre mensual{% endblock %}
+{% macro n(v) %}{{ '{:,.0f}'.format(v or 0).replace(',', '.') }}{% endmacro %}
+{% block contenido %}
+<div class="encabezado">
+  <h1>📄 Cierre mensual</h1>
+  <form method="get" class="filtros">
+    <select name="mes" id="cierre-mes" onchange="this.form.submit()">
+      {% for k in meses %}<option value="{{ k }}" {{ 'selected' if k == c.clave }}>{{ nombre_mes(k) }}</option>{% endfor %}
+      {% if c.clave not in meses %}<option value="{{ c.clave }}" selected>{{ c.titulo }}</option>{% endif %}
+    </select>
+  </form>
+</div>
+
+<section class="bienvenida cierre-cabecera">
+  <div>
+    <h1>{{ c.titulo }}</h1>
+    <p>Resumen de la actividad del mes, comparado con {{ c.titulo_anterior | lower }}. Descárguelo en PDF para archivar o imprimir.</p>
+  </div>
+  {% if puede('cierre_imprimir') %}<a class="boton p-cierre_imprimir" href="{{ url_for('cierre_pdf', mes=c.clave) }}" data-descarga>⬇️ Descargar PDF</a>{% endif %}
+  {% if not puede('cierre_imprimir') %}<span class="nota-permiso p-sin-imprimir">🔒 La descarga e impresión del cierre la realiza el Administrador.</span>{% endif %}
+</section>
+
+<div class="cifras">
+  {% for clave, etiqueta, unidad in [("ml_extraidos", "Leche extraída", " ml"), ("ml_entregados", "Leche entregada", " ml"), ("madres_nuevas", "Madres nuevas", ""), ("madres_activas", "Madres que donaron", "")] %}
+  {% set v = variacion(c.actual[clave], c.anterior[clave]) %}
+  <div class="cifra"><span>{{ n(c.actual[clave]) }}{{ unidad }}</span>{{ etiqueta }}
+    <small class="variacion {{ 'baja' if v.startswith('-') and v != '-' else 'sube' }}">{{ v }}</small></div>
+  {% endfor %}
+</div>
+
+<div class="columnas">
+  <section class="tarjeta">
+    <h2>Resumen del mes</h2>
+    <div class="tabla-contenedor">
+    <table>
+      <thead><tr><th>Indicador</th><th class="num">{{ c.titulo }}</th><th class="num">{{ c.titulo_anterior }}</th><th class="num">Variación</th></tr></thead>
+      <tbody>
+        {% for clave, etiqueta in [("madres_nuevas", "Madres nuevas"), ("madres_activas", "Madres que donaron"), ("extracciones", "Extracciones"), ("estimulos", "Estímulos"), ("ml_extraidos", "Leche extraída (ml)"), ("preparaciones", "Preparaciones"), ("dosis", "Dosis entregadas"), ("ml_entregados", "Leche entregada (ml)"), ("bebes_receptores", "Bebés que recibieron"), ("actividades", "Otras actividades"), ("altas", "Altas")] %}
+        <tr><td>{{ etiqueta }}</td><td class="num"><b>{{ n(c.actual[clave]) }}</b></td><td class="num">{{ n(c.anterior[clave]) }}</td><td class="num">{{ variacion(c.actual[clave], c.anterior[clave]) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  <section class="tarjeta">
+    <h2>El PDF incluye</h2>
+    <ol class="contenido-pdf">
+      <li>Resumen del mes con variaciones</li>
+      <li>Gráficos de proyección: 6 meses registrados y 3 proyectados ({{ c.proyeccion.etiquetas[6] }} a {{ c.proyeccion.etiquetas[-1] }})</li>
+      <li>Extracciones: gráfico por día, tipos de leche y donación por madre ({{ c.madres_ml | length }} madres)</li>
+      <li>Madres registradas en el mes ({{ c.nuevas | length }})</li>
+      <li>Preparaciones por tipo y por servicio</li>
+      <li>Otras actividades y personas alcanzadas en educación ({{ c.educacion | length }})</li>
+      <li>Actividades por agente: porcentaje de registros cargados por cada usuario ({{ c.agentes.filas | length }})</li>
+      <li>Altas de mamás y bebés ({{ c.altas | length }})</li>
+      <li>Tabla roja de madres y bebés con factores de riesgo ({{ c.riesgo | length }})</li>
+      <li>Espacio para firma y sello del responsable</li>
+    </ol>
+  </section>
+</div>
+<section class="tarjeta agentes">
+  <h2>👥 Actividades por agente</h2>
+  <p class="nota">Porcentaje del total de registros del mes ({{ n(c.agentes.total) }}) que cargó cada usuario. Se cuentan madres registradas, extracciones y estímulos, preparaciones, otras actividades y controles de bebés.</p>
+  {% if c.agentes.filas %}
+  <ul class="leyenda-agentes">
+    {% for k, nombre, color in c.agentes.tareas %}<li><i style="background: {{ color }}"></i>{{ nombre }}</li>{% endfor %}
+  </ul>
+  {% set maximo = c.agentes.filas | map(attribute='pct') | max %}
+  <div class="barras-agentes">
+    {% for f in c.agentes.filas %}
+    <div class="fila-agente {{ '' if f.rol else 'sin-usuario' }}">
+      <div class="agente-nombre"><b>{{ f.nombre }}</b>{% if f.rol %}<small class="rol rol-{{ {'Administrador': 'admin', 'Jefe': 'jefe', 'Agente': 'agente', 'Consulta': 'consulta'}[f.rol] }}">{{ f.rol }}</small>{% endif %}</div>
+      <div class="agente-barra">
+        <div class="agente-relleno" style="width: {{ (100 * f.pct / (maximo or 1)) | round(1) }}%">
+          {% for k, nombre, color in c.agentes.tareas if f.cantidades[k] %}<span style="flex: {{ f.cantidades[k] }}; background: {{ color }}" title="{{ nombre }}: {{ f.cantidades[k] }} ({{ f.pct_tareas[k] }} % de lo que cargó)"></span>{% endfor %}
+        </div>
+        <b class="agente-pct">{{ ('%g' % f.pct).replace('.', ',') }} %</b>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="tabla-contenedor">
+  <table>
+    {% set cortos = {'madres': 'Madres', 'extracciones': 'Extracc.', 'preparaciones': 'Prepar.', 'actividades': 'Activ.', 'controles': 'Controles'} %}
+    <thead><tr><th>Agente</th>{% for k, nombre, color in c.agentes.tareas %}<th class="num" title="{{ nombre }}">{{ cortos[k] }}</th>{% endfor %}<th class="num">Total</th><th class="num">%</th></tr></thead>
+    <tbody>
+      {% for f in c.agentes.filas %}
+      <tr><td class="sin-cortar">{{ f.nombre }}</td>{% for k, nombre, color in c.agentes.tareas %}<td class="num">{{ n(f.cantidades[k]) }}</td>{% endfor %}<td class="num"><b>{{ n(f.total) }}</b></td><td class="num"><b>{{ ('%g' % f.pct).replace('.', ',') }} %</b></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="vacio">Sin registros en el mes.</p>
+  {% endif %}
+</section>
+{% endblock %}

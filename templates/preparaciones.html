@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block titulo %}Preparaciones realizadas{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <h1>🧪 Preparaciones realizadas</h1>
+  <div class="mini-cifras">
+    <span><b>{{ resumen.cantidad }}</b>preparaciones hoy</span>
+    <span><b>{{ resumen.dosis }}</b>dosis hoy</span>
+    <span><b>{{ resumen.ml | ml }}</b>entregados hoy</span>
+  </div>
+</div>
+
+<form method="post" class="formulario" id="form-preparacion">
+  <fieldset>
+    <legend>🍼 Preparación</legend>
+    <div class="grilla">
+      <div class="ancho tipos-rapidos" role="group" aria-label="Tipos frecuentes">
+        {% for t in tipos_rapidos %}{% set tl = t | lower %}<button type="button" class="chip-tipo{{ ' chip-fortificada' if 'fortific' in tl }}{{ ' chip-formula' if 'rmula' in tl }}" data-tipo="{{ t }}">{{ '💪 ' if 'fortific' in tl else ('🍼 ' if 'rmula' in tl else '') }}{{ t }}</button>{% endfor %}
+      </div>
+      <label class="ancho">Tipo de preparación realizada *
+        <input name="tipo_preparacion" id="prep-tipo" list="lista-preparaciones" required placeholder="Elija un botón de arriba o escriba otro tipo">
+      </label>
+      <div class="ancho bloque-fortificacion" id="bloque-fortificacion" hidden>
+        <p class="nota">💪 Leche fortificada: indique con qué se fortificó y en qué concentración.</p>
+        <div class="grilla">
+          <label>Fortificador *<input name="fortificador" id="prep-fortificador" list="lista-fortificadores" placeholder="Ej.: fortificador en polvo"></label>
+          <label>Concentración<input name="concentracion" id="prep-concentracion" list="lista-concentraciones" placeholder="Ej.: 1 sobre cada 25 ml"></label>
+        </div>
+      </div>
+      <label>Dosis por vez (ml) *<input type="number" name="dosis_ml" id="prep-dosis" min="0.5" max="500" step="0.5" inputmode="decimal" required placeholder="Ej.: 20"></label>
+      <label>Frecuencia *<input name="frecuencia" id="prep-frecuencia" list="lista-frecuencias" required placeholder="Ej.: cada 3 horas"></label>
+      <label>Cantidad de dosis *<input type="number" name="cantidad_dosis" id="prep-cantidad" min="1" max="99" step="1" required placeholder="Ej.: 8"></label>
+      <label>Total a entregar<input id="prep-total" readonly tabindex="-1" placeholder="Se calcula solo"></label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>👶 Bebé que la recibe</legend>
+    <div class="grilla">
+      <label>Nombre *<input name="bebe_nombre" id="prep-bebe-nombre" list="lista-bebes-nombre" required></label>
+      <label>Apellido *<input name="bebe_apellido" id="prep-bebe-apellido" list="lista-bebes-apellido" required></label>
+    </div>
+    <div class="opciones">
+      <span>Internado en:</span>
+      {% for k, v in SERVICIOS.items() %}
+        <label class="opcion"><input type="radio" name="servicio" value="{{ k }}" required> {{ '🤱' if k == 'maternidad' else '🏥' }} {{ v }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>🕒 Entrega</legend>
+    <div class="grilla">
+      <label>Fecha *<input type="date" name="fecha" id="prep-fecha" value="{{ hoy }}" required></label>
+      <label>Hora de entrega *<input type="time" name="hora_entrega" id="prep-hora" value="{{ ahora }}" required></label>
+      <label class="ancho">Observaciones<input name="observaciones" id="prep-obs"></label>
+    </div>
+    <div class="acciones"><button type="submit">💾 Guardar preparación</button></div>
+  </fieldset>
+  <datalist id="lista-preparaciones">{% for s in sug_preparacion %}<option value="{{ s }}">{% endfor %}</datalist>
+  <datalist id="lista-fortificadores">{% for s in sug_fortificador %}<option value="{{ s }}">{% endfor %}</datalist>
+  <datalist id="lista-concentraciones">{% for s in sug_concentracion %}<option value="{{ s }}">{% endfor %}</datalist>
+  <datalist id="lista-frecuencias">{% for s in sug_frecuencia %}<option value="{{ s }}">{% endfor %}</datalist>
+  <datalist id="lista-bebes-nombre">{% for b in bebes %}<option value="{{ b.nombre }}">{% endfor %}</datalist>
+  <datalist id="lista-bebes-apellido">{% for b in bebes %}<option value="{{ b.apellido_materno }}">{% endfor %}</datalist>
+</form>
+
+<div class="encabezado">
+  <h2>Preparaciones entregadas</h2>
+  <form method="get" class="filtros">
+    <select name="servicio" onchange="this.form.submit()">
+      <option value="">Todos los servicios</option>
+      {% for k, v in SERVICIOS.items() %}<option value="{{ k }}" {{ 'selected' if filtro == k }}>{{ v }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+{% if preparaciones %}
+<div class="tabla-contenedor">
+<table class="tabla-preparaciones">
+  <thead><tr><th>Entrega</th><th>Bebé</th><th>Servicio</th><th>Preparación</th><th class="num">Dosis por vez</th><th>Frecuencia</th><th class="num">Dosis</th><th class="num">Total</th><th></th></tr></thead>
+  <tbody>
+    {% for p in preparaciones %}
+    <tr data-servicio="{{ p.servicio }}">
+      <td><b>{{ p.hora_entrega }}</b><br><small>{{ p.fecha | fecha }}</small></td>
+      <td><b>{{ p.bebe_nombre }}</b> {{ p.bebe_apellido }}</td>
+      <td><span class="etiqueta serv-{{ p.servicio }}">{{ SERVICIOS[p.servicio] }}</span></td>
+      <td>{% if 'fortific' in (p.tipo_preparacion or '') | lower %}<span class="etiqueta etiqueta-fortificada">💪 {{ p.tipo_preparacion }}</span>{% if p.fortificador %}<br><small>{{ p.fortificador }}{% if p.concentracion %} · {{ p.concentracion }}{% endif %}</small>{% endif %}{% elif 'rmula' in (p.tipo_preparacion or '') | lower %}<span class="etiqueta etiqueta-formula">🍼 {{ p.tipo_preparacion }}</span>{% else %}{{ p.tipo_preparacion }}{% endif %}{% if p.observaciones %}<br><small>{{ p.observaciones }}</small>{% endif %}</td>
+      <td class="num">{{ p.dosis_ml | ml }}</td>
+      <td>{{ p.frecuencia }}</td>
+      <td class="num">{{ p.cantidad_dosis }}</td>
+      <td class="num"><b>{{ p.total_ml | ml }}</b></td>
+      <td class="num">
+        <form method="post" action="{{ url_for('eliminar_preparacion', prep_id=p.id) }}" class="en-linea">
+          <button type="submit" class="quitar" title="Eliminar preparación">✕</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="vacio-grande"><div>🧪</div><p>No hay preparaciones registradas{% if filtro %} en este servicio{% endif %}.</p></div>
+{% endif %}
+
+<script>
+  (function () {
+    const dosis = document.getElementById('prep-dosis'), cant = document.getElementById('prep-cantidad'), total = document.getElementById('prep-total');
+    function calcular() {
+      const d = parseFloat(dosis.value), c = parseInt(cant.value, 10);
+      total.value = d > 0 && c > 0 ? (Math.round(d * c * 10) / 10) + ' ml' : '';
+    }
+    dosis.addEventListener('input', calcular); cant.addEventListener('input', calcular); calcular();
+
+    const tipo = document.getElementById('prep-tipo'), bloque = document.getElementById('bloque-fortificacion');
+    const fortificador = document.getElementById('prep-fortificador');
+    function revisarTipo() {
+      const fort = tipo.value.toLowerCase().includes('fortific');
+      bloque.hidden = !fort; fortificador.required = fort;
+      document.querySelectorAll('.chip-tipo').forEach(b => b.classList.toggle('elegido', b.dataset.tipo === tipo.value));
+    }
+    document.querySelectorAll('.chip-tipo').forEach(b => b.addEventListener('click', () => { tipo.value = b.dataset.tipo; revisarTipo(); }));
+    tipo.addEventListener('input', revisarTipo); revisarTipo();
+  })();
+</script>
+{% endblock %}

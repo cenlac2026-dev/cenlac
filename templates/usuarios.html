@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block titulo %}Usuarios{% endblock %}
+{% block contenido %}
+<div class="encabezado"><h1>👥 Usuarios y perfiles</h1></div>
+
+<section class="perfiles">
+  {% for k, v in ROLES.items() %}
+  <div class="perfil rol-borde-{{ k }}"><span class="rol rol-{{ k }}">{{ v }}</span><p>{{ DESCRIPCION_ROLES[k] }}</p></div>
+  {% endfor %}
+</section>
+
+<form method="post" class="formulario" id="form-usuario">
+  <fieldset>
+    <legend>➕ Nuevo usuario</legend>
+    <div class="grilla">
+      <label>Nombre y apellido *<input name="nombre" required></label>
+      <label>Usuario *<input name="usuario" required autocomplete="off" placeholder="Ej.: mlopez"></label>
+      <label>Perfil *<select name="rol" required><option value="">Elegir</option>{% for k, v in ROLES.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+      <label>Contraseña *<input type="password" name="clave" minlength="6" required autocomplete="new-password"></label>
+      <label>Repetir contraseña *<input type="password" name="repetir" minlength="6" required autocomplete="new-password"></label>
+    </div>
+    <div class="acciones"><button type="submit">💾 Crear usuario</button></div>
+  </fieldset>
+</form>
+
+<div class="tabla-contenedor">
+<table class="tabla-usuarios">
+  <thead><tr><th>Nombre</th><th>Usuario</th><th>Perfil</th><th>Estado</th><th>Último ingreso</th><th>Contraseña</th></tr></thead>
+  <tbody>
+  {% for u in usuarios %}
+    <tr class="{{ '' if u.activo else 'inactivo' }}">
+      <td><b>{{ u.nombre }}</b>{% if u.id == usuario_actual.id %} <small>(usted)</small>{% endif %}</td>
+      <td>{{ u.usuario }}</td>
+      <td>
+        <form method="post" action="{{ url_for('usuarios.cambiar', usuario_id=u.id) }}" class="en-linea" data-demo="usuario">
+          <input type="hidden" name="accion" value="rol">
+          <select name="rol" data-auto-enviar aria-label="Perfil de {{ u.nombre }}">{% for k, v in ROLES.items() %}<option value="{{ k }}" {{ 'selected' if u.rol == k }}>{{ v }}</option>{% endfor %}</select>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('usuarios.cambiar', usuario_id=u.id) }}" class="en-linea" data-demo="usuario">
+          <input type="hidden" name="accion" value="activo">
+          <button type="submit" class="secundario boton-chico">{{ '✅ Activo · desactivar' if u.activo else '⛔ Inactivo · activar' }}</button>
+        </form>
+      </td>
+      <td>{{ (u.ultimo_ingreso[:10] | fecha) ~ ' ' ~ u.ultimo_ingreso[11:16] if u.ultimo_ingreso else 'Nunca' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('usuarios.cambiar', usuario_id=u.id) }}" class="en-linea form-clave" data-demo="usuario">
+          <input type="hidden" name="accion" value="clave">
+          <input type="password" name="clave" minlength="6" required placeholder="Nueva" autocomplete="new-password" aria-label="Contraseña nueva para {{ u.usuario }}">
+          <button type="submit" class="boton-chico">Asignar</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="nota">Siempre queda al menos un administrador activo. Los usuarios desactivados no pueden ingresar, pero sus datos se conservan.</p>
+<script>
+  document.querySelectorAll('[data-auto-enviar]').forEach(function (s) { s.addEventListener('change', function () { s.form.requestSubmit ? s.form.requestSubmit() : s.form.submit(); }); });
+</script>
+{% endblock %}

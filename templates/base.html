@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Registro de madres donantes{% endblock %} · CENLAC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+  <link rel="icon" href="{{ url_for('static', filename='iconos/centro-lactancia.ico') }}" sizes="any">
+  <link rel="icon" href="{{ url_for('static', filename='iconos/icono.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='iconos/apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+  <meta name="theme-color" content="#a48fdc">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+</head>
+<body{% if usuario_actual %} data-ultima-novedad="{{ ultima_novedad }}"{% endif %}>
+  <header class="barra">
+    <div class="nubes" aria-hidden="true">
+      <svg viewBox="0 0 120 50" style="width:140px; left:22%; top:-14px"><path d="M20 40a14 14 0 0 1 4-27 20 20 0 0 1 38-4 16 16 0 0 1 30 6 13 13 0 0 1 8 25z"/></svg>
+      <svg viewBox="0 0 120 50" style="width:100px; left:58%; top:22px; opacity:.7"><path d="M20 40a14 14 0 0 1 4-27 20 20 0 0 1 38-4 16 16 0 0 1 30 6 13 13 0 0 1 8 25z"/></svg>
+      <svg viewBox="0 0 120 50" style="width:170px; right:-30px; top:-6px"><path d="M20 40a14 14 0 0 1 4-27 20 20 0 0 1 38-4 16 16 0 0 1 30 6 13 13 0 0 1 8 25z"/></svg>
+      <svg viewBox="0 0 20 20" style="width:12px; left:40%; top:12px"><path class="estrella" d="M10 0l2.6 7.4L20 10l-7.4 2.6L10 20l-2.6-7.4L0 10l7.4-2.6z"/></svg>
+      <svg viewBox="0 0 20 20" style="width:9px; left:70%; top:8px"><path class="estrella" d="M10 0l2.6 7.4L20 10l-7.4 2.6L10 20l-2.6-7.4L0 10l7.4-2.6z"/></svg>
+      <svg viewBox="0 0 20 20" style="width:10px; left:33%; top:4px"><path class="estrella" d="M10 0l2.6 7.4L20 10l-7.4 2.6L10 20l-2.6-7.4L0 10l7.4-2.6z"/></svg>
+    </div>
+    <a class="marca" href="{{ url_for('listado') if usuario_actual else '#' }}">
+      <img src="{{ url_for('static', filename='logo.svg') }}" alt="" width="44" height="44">
+      <span>CENLAC<small>Centro de Lactancia · Banco de leche humana</small></span>
+    </a>
+    {% if usuario_actual %}
+    <nav>
+      {% set actual = request.endpoint %}
+      <a href="{{ url_for('listado') }}" class="{{ 'activo' if actual in ('listado', 'ver', 'editar', 'crecimiento_bebe') }}">🤱 Madres donantes</a>
+      {% if puede('editar') %}<a href="{{ url_for('nueva') }}" class="p-editar {{ 'activo' if actual == 'nueva' }}">➕ Nueva madre</a>{% endif %}
+      {% if puede('completo') %}<a href="{{ url_for('preparaciones') }}" class="p-completo {{ 'activo' if actual == 'preparaciones' }}">🧪 Preparaciones</a>
+      <a href="{{ url_for('actividades') }}" class="p-completo {{ 'activo' if actual == 'actividades' }}">🌼 Otras actividades</a>{% endif %}
+      {% if puede('estadisticas') %}<a href="{{ url_for('estadisticas') }}" class="p-estadisticas {{ 'activo' if actual == 'estadisticas' }}">📊 Estadísticas</a>{% endif %}
+      {% if puede('cierre') %}<a href="{{ url_for('cierre_mensual') }}" class="p-cierre {{ 'activo' if actual == 'cierre_mensual' }}">📄 Cierre mensual</a>{% endif %}
+      {% if puede('usuarios') %}<a href="{{ url_for('usuarios.lista') }}" class="p-usuarios {{ 'activo' if actual == 'usuarios.lista' }}">👥 Usuarios</a>{% endif %}
+    </nav>
+    <div class="sesion">
+      <span class="sesion-nombre">👤 {{ usuario_actual.nombre }}<small class="rol rol-{{ usuario_actual.rol }}">{{ ROLES[usuario_actual.rol] }}</small></span>
+      <a href="#" class="envivo" id="envivo" title="Los cambios de los demás usuarios aparecen solos"><i></i>En vivo<span id="envivo-conectados"></span></a>
+      <a href="{{ url_for('instalar') }}" title="Instalar CENLAC en la PC o el celular">📲 Instalar</a>
+      <a href="{{ url_for('widget') }}" target="_blank" rel="noopener" title="Vista mini para dejar abierta en el escritorio">🗔 Mini</a>
+      <a href="{{ url_for('usuarios.mi_clave') }}">Mi contraseña</a>
+      <a href="{{ url_for('usuarios.salir') }}">Salir</a>
+    </div>
+    <div class="envivo-panel" id="envivo-panel" hidden>
+      <h3>🔄 Últimos cambios</h3>
+      <ul></ul>
+      <p class="envivo-conectados-lista"></p>
+    </div>
+    {% endif %}
+  </header>
+  <svg class="ola" viewBox="0 0 1440 40" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="grad-ola" x1="0" x2="1"><stop offset="0" stop-color="#a48fdc"/><stop offset=".55" stop-color="#a9b8ec"/><stop offset="1" stop-color="#9fd0ee"/></linearGradient></defs><path fill="url(#grad-ola)" d="M0,18 C180,40 360,40 540,22 C720,4 900,6 1080,24 C1260,40 1350,30 1440,20 L1440,0 L0,0 Z"/></svg>
+  <main>
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% for categoria, m in mensajes %}
+        <div class="aviso {{ 'aviso-error' if categoria == 'error' else '' }}">{{ '⚠️' if categoria == 'error' else '💜' }} {{ m }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block contenido %}{% endblock %}
+  </main>
+  <footer class="pie">Hecho con ternura <span class="corazon">♥</span> Cada gota de leche donada abraza a un bebé que la necesita.</footer>
+  {% if usuario_actual %}<script src="{{ url_for('static', filename='envivo.js') }}" defer></script>{% endif %}
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () {});</script>
+</body>
+</html>

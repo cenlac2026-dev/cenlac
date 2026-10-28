@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block titulo %}Curva de {{ bebe.nombre }} {{ bebe.apellido_materno }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <h1>📈 Curva de percentiles de {{ bebe.nombre }} {{ bebe.apellido_materno }}</h1>
+  <a class="boton secundario" href="{{ url_for('ver', madre_id=madre.id) }}">← Ficha de {{ madre.nombre }} {{ madre.apellido }}</a>
+</div>
+
+<section class="tarjeta datos-crecimiento">
+  <dl class="datos">
+    <dt>Sexo</dt><dd>{{ SEXOS.get(info.sexo, '—') }}</dd>
+    <dt>Nacimiento</dt><dd>{{ bebe.fecha_nacimiento | fecha or '—' }}</dd>
+    <dt>Edad gestacional</dt><dd>{% if info.eg_semanas %}{{ info.eg_semanas }}+{{ info.eg_dias }} semanas{% if info.prematuro %} · prematuro/a{% endif %}{% else %}Sin cargar (se toma como de término){% endif %}</dd>
+    <dt>Peso al nacer</dt><dd>{{ (bebe.peso_nacimiento | int ~ ' g') if bebe.peso_nacimiento else '—' }}</dd>
+    <dt>Internación</dt><dd>{% if madre.situacion == 'internada' %}{{ INTERNACIONES.get(madre.tipo_internacion, 'Internada') }}{% else %}En domicilio{% endif %}{% if alta %} · alta el {{ alta.isoformat() | fecha }}{% else %} · sin alta{% endif %}</dd>
+    <dt>Referencia</dt><dd>{{ referencia }}</dd>
+  </dl>
+  {% if faltan %}
+  <div class="aviso aviso-error">⚠️ Para calcular los percentiles falta cargar {{ faltan | join(' y ') }} del bebé. <a href="{{ url_for('editar', madre_id=madre.id) }}">Completar en la ficha</a></div>
+  {% endif %}
+</section>
+
+{% if not alta %}
+<section class="tarjeta">
+  <h2>➕ Control del día</h2>
+  <form method="post" action="{{ url_for('agregar_control', bebe_id=bebe.id) }}" class="grilla form-control" data-demo="control">
+    <label>Fecha<input type="date" name="fecha" value="{{ hoy }}" required></label>
+    <label>Peso (g)<input type="number" name="peso" min="300" max="9000" step="1" placeholder="Ej.: 2150"></label>
+    <label>Talla (cm)<input type="number" name="talla" min="25" max="75" step="0.1" placeholder="Opcional"></label>
+    <label>Perímetro cefálico (cm)<input type="number" name="pc" min="18" max="50" step="0.1" placeholder="Opcional"></label>
+    <label class="ancho-total">Observaciones<input name="observaciones" placeholder="Ej.: inicia succión, fototerapia, etc."></label>
+    <div><button type="submit">Guardar control</button></div>
+  </form>
+  <p class="nota">Se registra un control por día; si carga otro en la misma fecha, reemplaza al anterior.</p>
+</section>
+{% else %}
+<div class="aviso">🎓 El bebé ya tiene alta: la curva muestra toda la internación, del nacimiento al alta.</div>
+{% endif %}
+
+{% for g in graficos %}
+<section class="tarjeta">
+  <figure class="grafico grafico-percentiles">
+    <figcaption><b>{{ g.titulo }} ({{ g.unidad }})</b>
+      <span class="leyenda-percentiles">{% for p in percentiles %}<span class="ley-p p{{ p }}">P{{ p }}</span>{% endfor %}<span class="ley-bebe">● {{ bebe.nombre }}</span></span>
+    </figcaption>
+    <svg viewBox="0 0 {{ g.ancho }} {{ g.alto }}" role="img" aria-label="Curva de {{ g.titulo | lower }} de {{ bebe.nombre }} con percentiles">
+      <rect x="{{ g.izq }}" y="{{ g.arr }}" width="{{ g.ancho - g.izq - g.der }}" height="{{ g.base - g.arr }}" class="cp-fondo"/>
+      {% for m in g.marcas_y %}
+        <line x1="{{ g.izq }}" x2="{{ g.ancho - g.der }}" y1="{{ m.y }}" y2="{{ m.y }}" class="g-grilla"/>
+        <text x="{{ g.izq - 8 }}" y="{{ m.y + 4 }}" text-anchor="end" class="g-eje">{{ m.texto }}</text>
+      {% endfor %}
+      {% for m in g.marcas_x %}
+        <line x1="{{ m.x }}" x2="{{ m.x }}" y1="{{ g.arr }}" y2="{{ g.base }}" class="g-grilla"/>
+        <text x="{{ m.x }}" y="{{ g.base + 16 }}" text-anchor="middle" class="g-eje">{{ m.texto }}</text>
+        <text x="{{ m.x }}" y="{{ g.base + 30 }}" text-anchor="middle" class="g-eje cp-dia">día {{ m.dia }}</text>
+      {% endfor %}
+      {% if g.x_alta %}
+        <line x1="{{ g.x_alta }}" x2="{{ g.x_alta }}" y1="{{ g.arr }}" y2="{{ g.base }}" class="cp-alta"/>
+        <text x="{{ g.x_alta - 4 }}" y="{{ g.arr + 12 }}" text-anchor="end" class="cp-alta-txt">alta</text>
+      {% endif %}
+      {% for l in g.lineas %}
+        <path d="{{ l.d }}" class="cp-linea p{{ l.p }}"/>
+        {% if l.etq_y is not none %}<text x="{{ g.ancho - g.der + 6 }}" y="{{ l.etq_y }}" class="cp-etq p{{ l.p }}">P{{ l.p }}</text>{% endif %}
+      {% endfor %}
+      <path d="{{ g.linea_bebe }}" class="cp-bebe"/>
+      {% for p in g.puntos %}
+        <g class="g-punto"><circle cx="{{ p.x }}" cy="{{ p.y }}" r="12" class="g-zona-hover"/><circle cx="{{ p.x }}" cy="{{ p.y }}" r="4.5" class="cp-punto"/>
+        <title>{{ p.fecha }}: {{ p.valor }} {{ g.unidad }}{% if p.percentil is not none %} · {{ p.percentil | pct }}{% endif %}</title></g>
+      {% endfor %}
+    </svg>
+  </figure>
+</section>
+{% else %}
+{% if not faltan %}<section class="tarjeta"><p class="vacio">Todavía no hay controles cargados. La curva aparece con el primer peso.</p></section>{% endif %}
+{% endfor %}
+
+{% if filas %}
+<section class="tarjeta">
+  <h2>🗓️ Controles diarios</h2>
+  <div class="tabla-contenedor">
+  <table class="tabla-controles">
+    <thead><tr><th>Fecha</th><th>Edad</th><th class="num">Peso</th><th class="num">Percentil</th><th class="num">Ganancia</th><th class="num">Talla</th><th class="num">PC</th><th>Observaciones</th><th></th></tr></thead>
+    <tbody>
+    {% for c in filas %}
+      <tr>
+        <td>{{ c.fecha | fecha }}</td>
+        <td><small>{{ c.edad }}</small></td>
+        <td class="num">{{ (c.peso | int ~ ' g') if c.peso else '—' }}</td>
+        <td class="num">{% set r = c.p_peso %}{% if r and r.percentil is defined %}<span class="percentil {{ 'p-bajo' if r.percentil < 10 else ('p-alto' if r.percentil > 90 else '') }}">{{ r.percentil | pct }}</span><small>z {{ '%+.1f' | format(r.z) }}</small>{% elif r %}<small>{{ r.motivo }}</small>{% else %}—{% endif %}</td>
+        <td class="num">{% if c.ganancia is not none %}{{ '%+d' | format(c.ganancia) }} g/día{% else %}—{% endif %}</td>
+        <td class="num">{% if c.talla %}{{ c.talla }} cm{% if c.p_talla and c.p_talla.percentil is defined %}<small>{{ c.p_talla.percentil | pct }}</small>{% endif %}{% else %}—{% endif %}</td>
+        <td class="num">{% if c.pc %}{{ c.pc }} cm{% if c.p_pc and c.p_pc.percentil is defined %}<small>{{ c.p_pc.percentil | pct }}</small>{% endif %}{% else %}—{% endif %}</td>
+        <td>{{ c.observaciones or '' }}</td>
+        <td>{% if c.id %}<form method="post" action="{{ url_for('eliminar_control', control_id=c.id) }}" class="en-linea" data-demo="quitar-ext" onsubmit="return confirm('¿Eliminar este control?');"><button type="submit" class="quitar" title="Eliminar">✕</button></form>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="nota">Percentiles: {{ referencia }}. Por debajo de P10 o por encima de P90 se marcan en color. Las curvas son una ayuda: la interpretación clínica queda a cargo del equipo de neonatología.</p>
+</section>
+{% endif %}
+{% endblock %}

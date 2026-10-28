@@ -1,0 +1,6 @@
+__pycache__/
+*.db
+consentimientos/
+clave-secreta.txt
+.instalado
+*.log

@@ -1,0 +1,21 @@
+# Render (https://render.com): New > Blueprint, elegir el repositorio de CENLAC.
+# Pide los valores marcados con sync: false (los datos de Supabase). Ver PUBLICAR-EN-INTERNET.md.
+services:
+  - type: web
+    name: cenlac
+    runtime: docker
+    plan: free
+    healthCheckPath: /ingresar
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: TZ
+        value: America/Argentina/Buenos_Aires
+      - key: EN_INTERNET
+        value: "1"

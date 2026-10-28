@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Etiqueta N° {{ e.id }} · {{ e.madre }}</title>
+  <style>
+    :root { --texto: #2b2440; --suave: #6b6385; --rosa: #8f78d0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px; font-family: "Nunito", system-ui, sans-serif; color: var(--texto); background: #f6f3fc; }
+    .acciones { display: flex; gap: 10px; justify-content: center; margin-bottom: 18px; flex-wrap: wrap; }
+    .acciones button, .acciones a { background: var(--rosa); color: #fff; border: 0; border-radius: 999px; padding: 10px 20px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+    .acciones a { background: #e3dcf5; color: #5a45a8; }
+    /* Etiqueta de 70 x 45 mm para pegar en el frasco */
+    .etiqueta { width: 70mm; height: 45mm; margin: 0 auto; background: #fff; border: 1px dashed #b9add9; border-radius: 3mm;
+                display: grid; grid-template-columns: 30mm 1fr; gap: 2mm; align-items: center; padding: 2.5mm; }
+    .etiqueta svg { width: 30mm; height: 30mm; display: block; }
+    .datos { display: flex; flex-direction: column; gap: 0.8mm; font-size: 8.5pt; line-height: 1.15; min-width: 0; }
+    .datos .titulo { font-size: 7pt; color: var(--suave); text-transform: uppercase; letter-spacing: .03em; font-weight: 700; }
+    .datos .madre { font-size: 10pt; font-weight: 800; overflow-wrap: anywhere; }
+    .datos .leche { font-weight: 700; }
+    .datos .ml { font-size: 13pt; font-weight: 800; }
+    .nota { text-align: center; color: var(--suave); font-size: .85rem; margin-top: 14px; }
+    @media print {
+      @page { size: 70mm 45mm; margin: 0; }
+      body { padding: 0; background: #fff; }
+      .acciones, .nota { display: none; }
+      .etiqueta { border: 0; border-radius: 0; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="acciones">
+    <button type="button" onclick="window.print()">🖨️ Imprimir</button>
+    <a href="{{ url_for('ver', madre_id=e.madre_id) }}#extracciones">← Volver a la ficha</a>
+  </div>
+  <div class="etiqueta">
+    {{ e.svg | safe }}
+    <div class="datos">
+      <span class="titulo">Centro de Lactancia · N° {{ e.id }}</span>
+      <span class="madre">{{ e.madre }}</span>
+      <span class="leche">{{ e.leche }}</span>
+      <span class="ml">{{ e.cantidad }}</span>
+      <span>{{ e.fecha }} · {{ e.hora }} h</span>
+    </div>
+  </div>
+  <p class="nota">Etiqueta de 70 × 45 mm. El código QR contiene: madre, tipo de leche, cantidad, fecha y hora.</p>
+  {% if imprimir %}<script>window.addEventListener('load', function () { window.print(); });</script>{% endif %}
+</body>
+</html>

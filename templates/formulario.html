@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<h1>{{ titulo }}</h1>
+<form method="post" class="formulario" enctype="multipart/form-data">
+  <fieldset>
+    <legend>🤱 Madre: datos filiatorios</legend>
+    <div class="grilla">
+      <label>Apellido *<input name="apellido" id="apellido" required value="{{ madre.apellido or '' }}"></label>
+      <label>Nombre *<input name="nombre" required value="{{ madre.nombre or '' }}"></label>
+      <label>DNI *<input name="dni" required inputmode="numeric" value="{{ madre.dni or '' }}"></label>
+      <label>Fecha de nacimiento<input type="date" name="fecha_nacimiento" value="{{ madre.fecha_nacimiento or '' }}"></label>
+      <label>Teléfono<input name="telefono" type="tel" value="{{ madre.telefono or '' }}"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🏠 Domicilio</legend>
+    <div class="grilla">
+      <label class="ancho">Dirección<input name="direccion" placeholder="Calle y número" value="{{ madre.direccion or '' }}"></label>
+      <label>Barrio<input name="barrio" value="{{ madre.barrio or '' }}"></label>
+      <label>Localidad<input name="localidad" value="{{ madre.localidad or '' }}"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🏥 Situación de la madre *</legend>
+    <div class="opciones">
+      {% for k, v in SITUACIONES.items() %}
+        <label class="opcion"><input type="radio" name="situacion" value="{{ k }}" {{ 'checked' if madre.situacion == k }} required> {{ v }}</label>
+      {% endfor %}
+    </div>
+    <div id="bloque-internacion" class="opciones subopciones">
+      <span>Tipo de internación:</span>
+      {% for k, v in INTERNACIONES.items() %}
+        <label class="opcion"><input type="radio" name="tipo_internacion" value="{{ k }}" {{ 'checked' if madre.tipo_internacion == k }}> {{ v }}</label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>🩺 Salud de la madre</legend>
+    <div class="grilla">
+      <label class="ancho">Factores de riesgo<textarea name="factores_riesgo" id="madre-riesgo" rows="2" placeholder="Ej.: hipertensión gestacional, diabetes gestacional, tabaquismo, consumo de medicamentos">{{ madre.factores_riesgo or '' }}</textarea></label>
+      <label class="ancho">Patologías crónicas<textarea name="patologias_cronicas" id="madre-patologias" rows="2" placeholder="Ej.: hipotiroidismo, asma, diabetes tipo 1">{{ madre.patologias_cronicas or '' }}</textarea></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>📝 Consentimiento informado</legend>
+    <div class="grilla">
+      <label class="ancho">Foto o PDF del consentimiento firmado
+        <input type="file" name="consentimiento" accept="image/*,application/pdf">
+      </label>
+      <label>Fecha de firma<input type="date" name="consentimiento_fecha" value="{{ madre.consentimiento_fecha or '' }}"></label>
+    </div>
+    <p class="nota">{% if madre.consentimiento_archivo %}✅ Ya hay un consentimiento cargado. Si elige otro archivo, reemplaza al anterior.{% else %}Desde el celular se puede sacar la foto directamente. Máximo 15 MB.{% endif %}</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>👶 Bebé(s)</legend>
+    <div id="bebes">
+      {% for b in (bebes or [{}]) %}
+      <div class="grilla fila-bebe">
+        <label>Nombre<input name="bebe_nombre" value="{{ b.nombre or '' }}"></label>
+        <label>Apellido materno<input name="bebe_apellido" class="apellido-bebe" value="{{ b.apellido_materno or '' }}"></label>
+        <label>Fecha de nacimiento<input type="date" name="bebe_fecha" value="{{ b.fecha_nacimiento or '' }}"></label>
+        <button type="button" class="quitar" title="Quitar bebé">✕</button>
+        <input type="hidden" name="bebe_id" value="{{ b.id or '' }}">
+        <div class="datos-nacimiento">
+          <label>Sexo<select name="bebe_sexo"><option value="">Elegir</option>{% for k, v in SEXOS.items() %}<option value="{{ k }}" {{ 'selected' if b.sexo == k }}>{{ v }}</option>{% endfor %}</select></label>
+          <label>Edad gestacional (semanas)<input type="number" name="bebe_eg_semanas" min="22" max="44" value="{{ b.eg_semanas or '' }}" placeholder="Ej.: 38"></label>
+          <label>+ días<input type="number" name="bebe_eg_dias" min="0" max="6" value="{{ b.eg_dias or '' }}" placeholder="0 a 6"></label>
+          <label>Peso al nacer (g)<input type="number" name="bebe_peso_nacimiento" min="300" max="6500" value="{{ b.peso_nacimiento or '' }}" placeholder="Ej.: 3250"></label>
+        </div>
+        <label class="ancho-bebe">Factores de riesgo<input name="bebe_riesgo" value="{{ b.factores_riesgo or '' }}" placeholder="Ej.: prematurez, bajo peso al nacer, ictericia"></label>
+        <label class="ancho-bebe">Patologías crónicas<input name="bebe_patologias" value="{{ b.patologias_cronicas or '' }}" placeholder="Ej.: cardiopatía congénita, displasia broncopulmonar"></label>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" id="agregar-bebe" class="secundario">+ Agregar otro bebé</button>
+    <p class="nota">Si deja vacío el apellido, se usa el apellido de la madre. Sexo, edad gestacional y peso al nacer se usan para la curva de percentiles.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>👨 Padre</legend>
+    <div class="grilla">
+      <label>Nombre<input name="padre_nombre" value="{{ padre.nombre if padre else '' }}"></label>
+      <label>Apellido<input name="padre_apellido" value="{{ padre.apellido if padre else '' }}"></label>
+      <label>Edad<input name="padre_edad" type="number" min="10" max="99" value="{{ padre.edad if padre and padre.edad is not none else '' }}"></label>
+    </div>
+    <div class="opciones">
+      <span>¿Convive con la madre?</span>
+      <label class="opcion"><input type="radio" name="padre_convive" value="si" {{ 'checked' if padre and padre.convive }}> Sí</label>
+      <label class="opcion"><input type="radio" name="padre_convive" value="no" {{ 'checked' if padre and not padre.convive }}> No</label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>📝 Observaciones</legend>
+    <textarea name="observaciones" rows="3">{{ madre.observaciones or '' }}</textarea>
+  </fieldset>
+
+  <div class="acciones">
+    <button type="submit">💾 Guardar registro</button>
+    <a href="{{ url_for('ver', madre_id=madre.id) if madre.id else url_for('listado') }}">Cancelar</a>
+  </div>
+</form>
+
+<template id="plantilla-bebe">
+  <div class="grilla fila-bebe">
+    <label>Nombre<input name="bebe_nombre"></label>
+    <label>Apellido materno<input name="bebe_apellido" class="apellido-bebe"></label>
+    <label>Fecha de nacimiento<input type="date" name="bebe_fecha"></label>
+    <button type="button" class="quitar" title="Quitar bebé">✕</button>
+    <input type="hidden" name="bebe_id" value="">
+    <div class="datos-nacimiento">
+      <label>Sexo<select name="bebe_sexo"><option value="">Elegir</option>{% for k, v in SEXOS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+      <label>Edad gestacional (semanas)<input type="number" name="bebe_eg_semanas" min="22" max="44" placeholder="Ej.: 38"></label>
+      <label>+ días<input type="number" name="bebe_eg_dias" min="0" max="6" placeholder="0 a 6"></label>
+      <label>Peso al nacer (g)<input type="number" name="bebe_peso_nacimiento" min="300" max="6500" placeholder="Ej.: 3250"></label>
+    </div>
+    <label class="ancho-bebe">Factores de riesgo<input name="bebe_riesgo" placeholder="Ej.: prematurez, bajo peso al nacer, ictericia"></label>
+    <label class="ancho-bebe">Patologías crónicas<input name="bebe_patologias" placeholder="Ej.: cardiopatía congénita, displasia broncopulmonar"></label>
+  </div>
+</template>
+
+<script>
+  const bloque = document.getElementById('bloque-internacion');
+  function actualizarInternacion() {
+    const sel = document.querySelector('input[name="situacion"]:checked');
+    const internada = sel && sel.value === 'internada';
+    bloque.hidden = !internada;
+    bloque.querySelectorAll('input').forEach(i => { i.required = internada; if (!internada) i.checked = false; });
+  }
+  document.querySelectorAll('input[name="situacion"]').forEach(r => r.addEventListener('change', actualizarInternacion));
+  actualizarInternacion();
+
+  const contenedor = document.getElementById('bebes');
+  const apellidoMadre = document.getElementById('apellido');
+  function sugerirApellido() {
+    contenedor.querySelectorAll('.apellido-bebe').forEach(i => { i.placeholder = apellidoMadre.value; });
+  }
+  apellidoMadre.addEventListener('input', sugerirApellido);
+  document.getElementById('agregar-bebe').addEventListener('click', () => {
+    contenedor.appendChild(document.getElementById('plantilla-bebe').content.cloneNode(true));
+    sugerirApellido();
+  });
+  contenedor.addEventListener('click', e => {
+    if (!e.target.classList.contains('quitar')) return;
+    const fila = e.target.closest('.fila-bebe');
+    if (contenedor.querySelectorAll('.fila-bebe').length > 1) fila.remove();
+    else fila.querySelectorAll('input').forEach(i => i.value = '');
+  });
+  sugerirApellido();
+</script>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Primer inicio{% endblock %}
+{% block contenido %}
+<section class="tarjeta caja-ingreso">
+  <img src="{{ url_for('static', filename='ilustracion-bebe.svg') }}" alt="" class="ingreso-ilustracion">
+  <h1>¡Bienvenida/o!</h1>
+  <p>Es la primera vez que se abre la aplicación. Cree el usuario <b>Administrador</b>: después, desde <b>Usuarios</b>, puede crear las cuentas del equipo.</p>
+  <form method="post" class="formulario-ingreso">
+    <label>Nombre y apellido<input name="nombre" required></label>
+    <label>Usuario<input name="usuario" autocomplete="username" required placeholder="Ej.: szabala"></label>
+    <label>Contraseña<input type="password" name="clave" autocomplete="new-password" minlength="6" required></label>
+    <label>Repetir contraseña<input type="password" name="repetir" autocomplete="new-password" minlength="6" required></label>
+    <button type="submit">Crear administrador</button>
+  </form>
+</section>
+{% endblock %}
