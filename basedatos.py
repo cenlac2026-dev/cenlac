@@ -10,8 +10,19 @@ mayúsculas, group_concat, COLLATE NOCASE y el id de la fila recién insertada.
 import os
 import re
 import sqlite3
+from urllib.parse import quote, unquote
 
-URL = os.environ.get("DATABASE_URL", "").strip()
+
+def _arreglar_url(url):
+    """Si la contraseña tiene símbolos como @, # o / sin convertir, los convierte (%40, %23, %2F)."""
+    m = re.match(r"^(postgres(?:ql)?://)([^:/@]*):(.*)@([^@]+)$", url)
+    if not m:
+        return url
+    inicio, usuario, clave, resto = m.groups()
+    return f"{inicio}{usuario}:{quote(unquote(clave), safe='')}@{resto}"
+
+
+URL = _arreglar_url(os.environ.get("DATABASE_URL", "").strip().strip("'\""))
 ES_POSTGRES = URL.startswith(("postgres://", "postgresql://"))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("REGISTRO_DB", os.path.join(BASE_DIR, "registro.db"))
