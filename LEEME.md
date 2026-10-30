@@ -1,4 +1,4 @@
-# CENLAC: registro de madres donantes (Centro de Lactancia)
+# CENLAC: registro de madres donantes (Centro de Lactancia N° 10)
 
 Aplicación del **Centro de Lactancia N° 10**: el número aparece en el encabezado, la pantalla de ingreso, la vista mini, el cierre mensual, el reconocimiento de alta y las etiquetas QR.
 
