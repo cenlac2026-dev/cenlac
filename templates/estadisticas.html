@@ -66,6 +66,55 @@
     {% endfor %}
   </div>
 </section>
+<section class="tarjeta proyeccion modalidades">
+  <div class="encabezado">
+    <div>
+      <h2>💧 Donantes y 🍼 solo extracción</h2>
+      <p class="nota">Leche extraída por mes (últimos 6 meses), separada por tipo de leche. Cada barra suma los ml del mes.</p>
+    </div>
+    <ul class="leyenda-leche" aria-label="Tipos de leche">
+      {% for nombre, color in por_modalidad.leyenda %}<li><i style="background: {{ color }}"></i>{{ nombre }}</li>{% endfor %}
+    </ul>
+  </div>
+  <div class="graficos">
+    {% for g in por_modalidad.graficos %}
+    {% set ultimo = g.barras[-1] %}
+    <figure class="grafico grafico-{{ g.modalidad }}">
+      <figcaption>
+        <b>{{ '💧' if g.modalidad == 'donante' else '🍼' }} {{ g.titulo }}</b>
+        <span class="resumen-proy">Este mes: <b>{{ ultimo.total | ml }}</b> · {{ ultimo.madres }} madre{{ 's' if ultimo.madres != 1 }} · {{ ultimo.extracciones }} extracci{{ 'ones' if ultimo.extracciones != 1 else 'ón' }} · 6 meses: <b>{{ g.total | ml }}</b></span>
+      </figcaption>
+      <svg viewBox="0 0 {{ g.ancho }} {{ g.alto }}" role="img" aria-label="{{ g.titulo }}: ml extraídos por mes y por tipo de leche">
+        {% for m in g.marcas %}
+          <line x1="{{ g.izq }}" x2="{{ g.ancho - g.der }}" y1="{{ m.y }}" y2="{{ m.y }}" class="{{ 'g-base' if loop.first else 'g-grilla' }}"/>
+          <text x="{{ g.izq - 8 }}" y="{{ m.y + 4 }}" text-anchor="end" class="g-eje">{{ m.texto }}</text>
+        {% endfor %}
+        {% for b in g.barras %}
+          <g class="g-barra">
+            {% for t in b.tramos %}<rect x="{{ b.x }}" y="{{ t.y }}" width="{{ b.ancho }}" height="{{ t.h }}" fill="{{ t.color }}"><title>{{ b.etiqueta }} · {{ t.texto }}</title></rect>{% endfor %}
+            {% if b.total %}<text x="{{ b.centro }}" y="{{ b.y_total }}" text-anchor="middle" class="g-valor">{{ '{:,.0f}'.format(b.total).replace(',', '.') }}</text>{% endif %}
+            <text x="{{ b.centro }}" y="{{ g.alto - 8 }}" text-anchor="middle" class="g-eje">{{ b.etiqueta }}</text>
+          </g>
+        {% endfor %}
+      </svg>
+      <details>
+        <summary>Ver tabla</summary>
+        <div class="tabla-contenedor">
+        <table>
+          <thead><tr><th>Mes</th><th class="num">Madres</th><th class="num">Extracc.</th><th class="num">Calostro</th><th class="num">Transición</th><th class="num">Madura</th><th class="num">Sin indicar</th><th class="num">Total</th></tr></thead>
+          <tbody>
+            {% for b in g.barras %}
+            <tr><td>{{ b.etiqueta }}</td><td class="num">{{ b.madres }}</td><td class="num">{{ b.extracciones }}</td>
+              <td class="num">{{ b.ml.calostro | ml }}</td><td class="num">{{ b.ml.transicion | ml }}</td><td class="num">{{ b.ml.madura | ml }}</td><td class="num">{{ b.ml[None] | ml }}</td><td class="num"><b>{{ b.total | ml }}</b></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </details>
+    </figure>
+    {% endfor %}
+  </div>
+</section>
 <div class="cifras">
   <div class="cifra"><span>{{ d.total }}</span>🤱 Madres registradas</div>
   <div class="cifra"><span>{{ d.donantes }}</span>💧 Donantes ({{ porc(d.donantes, d.total) }})</div>

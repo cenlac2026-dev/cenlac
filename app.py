@@ -1365,6 +1365,45 @@ def leche_por_tipo(db):
             "nombre_mes": cierre.MESES[hoy.month - 1], "anio": hoy.year}
 
 
+def graficos_modalidad(db):
+    """Gráficos de barras apiladas (ml por tipo de leche y por mes, últimos 6 meses) para madres donantes y para
+    madres que solo hacen extracción. Devuelve las series con las coordenadas ya calculadas para el SVG."""
+    hoy = date.today()
+    ancho, alto, izq, der, arriba, abajo = 560, 230, 46, 10, 22, 26
+    graficos = []
+    for serie in cierre.leche_por_modalidad(db, hoy.year, hoy.month):
+        maximo = max(f["total"] for f in serie["filas"]) or 1
+        paso = 10 ** (len(str(int(maximo / 4))) - 1) if maximo >= 4 else 1
+        for m in (1, 2, 2.5, 5, 10):
+            if m * paso >= maximo / 4:
+                paso *= m
+                break
+        tope = paso * 4
+        while tope < maximo:
+            tope += paso
+        base, alto_g = alto - abajo, alto - abajo - arriba
+        col = (ancho - izq - der) / len(serie["filas"])
+        barra = min(col * 0.56, 46)
+        barras = []
+        for i, f in enumerate(serie["filas"]):
+            x, y = izq + i * col + (col - barra) / 2, base
+            tramos = []
+            for clave, nombre, color in cierre.COLORES_LECHE:
+                h = alto_g * f["ml"][clave] / tope
+                if h > 0:
+                    y -= h
+                    tramos.append({"y": round(y, 1), "h": round(h, 1), "color": "#%02x%02x%02x" % color,
+                                   "texto": f"{nombre}: {formato_ml(f['ml'][clave])}"})
+            barras.append({"x": round(x, 1), "ancho": round(barra, 1), "centro": round(x + barra / 2, 1),
+                           "y_total": round(y - 6, 1), "tramos": tramos, **f})
+        marcas = [{"y": round(base - alto_g * v / tope, 1), "texto": f"{v:,.0f}".replace(",", ".")}
+                  for v in [tope * i / 4 for i in range(5)]]
+        graficos.append({**serie, "ancho": ancho, "alto": alto, "izq": izq, "der": der, "base": base,
+                         "barras": barras, "marcas": marcas})
+    leyenda = [(nombre, "#%02x%02x%02x" % color) for _, nombre, color in cierre.COLORES_LECHE]
+    return {"graficos": graficos, "leyenda": leyenda}
+
+
 @app.route("/estadisticas")
 def estadisticas():
     db = get_db()
@@ -1431,7 +1470,8 @@ def estadisticas():
                OR EXISTS (SELECT 1 FROM bebes b WHERE b.madre_id = m.id AND COALESCE(b.factores_riesgo, '') <> '')
             ORDER BY m.apellido, m.nombre"""
     ).fetchall()
-    return render_template("estadisticas.html", d=datos, proy=datos_proyeccion(db), riesgo=riesgo)
+    return render_template("estadisticas.html", d=datos, proy=datos_proyeccion(db), riesgo=riesgo,
+                           por_modalidad=graficos_modalidad(db))
 
 
 init_db()

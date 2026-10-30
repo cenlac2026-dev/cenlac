@@ -97,6 +97,48 @@ def series_proyeccion(db, anio, mes):
     return {"etiquetas": etiquetas, "metricas": metricas}
 
 
+# Tipos de leche en los gráficos por tipo de madre: (clave, nombre, color RGB). None = sin indicar.
+COLORES_LECHE = [
+    ("calostro", "Calostro", (230, 185, 60)),
+    ("transicion", "De transición", (232, 162, 124)),
+    ("madura", "Madura", (138, 164, 207)),
+    (None, "Sin indicar", (207, 200, 222)),
+]
+MODALIDADES_GRAFICO = [("donante", "Madres donantes"), ("extraccion", "Madres que solo hacen extracción")]
+
+
+def leche_por_modalidad(db, anio, mes, meses=MESES_HISTORIA):
+    """Por cada tipo de madre (donante / solo extracción), los últimos `meses` meses hasta (anio, mes) inclusive:
+    ml por tipo de leche, total, madres con registros y cantidad de extracciones."""
+    lista = [sumar_meses(anio, mes, -meses + 1 + i) for i in range(meses)]
+    claves = [f"{a}-{m:02d}" for a, m in lista]
+    resultado = []
+    for modalidad, titulo in MODALIDADES_GRAFICO:
+        ml = {}
+        for k, tipo, total in db.execute(
+                "SELECT substr(e.fecha_hora, 1, 7), e.tipo_leche, COALESCE(SUM(e.cantidad_ml), 0) FROM extracciones e "
+                "JOIN madres m ON m.id = e.madre_id WHERE m.modalidad = ? AND substr(e.fecha_hora, 1, 7) >= ? "
+                "AND substr(e.fecha_hora, 1, 7) <= ? GROUP BY substr(e.fecha_hora, 1, 7), e.tipo_leche",
+                (modalidad, claves[0], claves[-1])):
+            ml[(k, tipo if tipo in ("calostro", "transicion", "madura") else None)] = \
+                ml.get((k, tipo if tipo in ("calostro", "transicion", "madura") else None), 0) + float(total or 0)
+        conteos = {k: (madres, ext) for k, madres, ext in db.execute(
+            "SELECT substr(e.fecha_hora, 1, 7), COUNT(DISTINCT e.madre_id), "
+            "SUM(CASE WHEN e.tipo = 'extraccion' THEN 1 ELSE 0 END) FROM extracciones e "
+            "JOIN madres m ON m.id = e.madre_id WHERE m.modalidad = ? AND substr(e.fecha_hora, 1, 7) >= ? "
+            "AND substr(e.fecha_hora, 1, 7) <= ? GROUP BY substr(e.fecha_hora, 1, 7)",
+            (modalidad, claves[0], claves[-1]))}
+        filas = []
+        for (a, m), k in zip(lista, claves):
+            por_tipo = {t: ml.get((k, t), 0) for t, _, _ in COLORES_LECHE}
+            madres, ext = conteos.get(k, (0, 0))
+            filas.append({"clave": k, "etiqueta": f"{MESES_CORTOS[m - 1]} {str(a)[2:]}", "ml": por_tipo,
+                          "total": sum(por_tipo.values()), "madres": madres or 0, "extracciones": int(ext or 0)})
+        resultado.append({"modalidad": modalidad, "titulo": titulo, "filas": filas,
+                          "total": sum(f["total"] for f in filas)})
+    return resultado
+
+
 def nombre_mes(anio, mes):
     return f"{MESES[mes - 1].capitalize()} {anio}"
 
@@ -172,6 +214,7 @@ def datos_cierre(db, anio, mes, tipos_leche, servicios, actividades):
                       (SELECT COALESCE(SUM(e.cantidad_ml), 0) FROM extracciones e WHERE e.madre_id = m.id)
                  FROM madres m WHERE substr(m.fecha_alta, 1, 7) = ? ORDER BY m.fecha_alta""", (clave,)).fetchall(),
         "agentes": por_agente(db, clave),
+        "por_modalidad": leche_por_modalidad(db, anio, mes),
         "parcial_hasta": date.today().isoformat() if clave == date.today().strftime("%Y-%m") else None,
         # Mes cerrado: historia hasta ese mes y proyección de los 3 siguientes.
         # Mes en curso: historia hasta el mes anterior (el actual está incompleto) y se proyecta desde el actual.
@@ -420,6 +463,56 @@ class InformePDF(FPDF):
         self.set_text_color(*TEXTO)
         self.ln(2)
 
+    def grafico_leche_mensual(self, serie, alto=40):
+        """Barras apiladas por mes con los ml de cada tipo de leche (un gráfico por tipo de madre)."""
+        ancho = self.w - self.l_margin - self.r_margin
+        if self.get_y() + alto + 16 > self.h - 18:
+            self.add_page()
+        self.set_font("Helvetica", "B", 9.5)
+        self.set_text_color(*TEXTO)
+        self.cell(ancho * 0.6, 6, serie["titulo"])
+        self.set_font("Helvetica", "", 8.5)
+        self.set_text_color(*SUAVE)
+        self.cell(ancho * 0.4, 6, f"Total de los {len(serie['filas'])} meses: {num(serie['total'], 'ml')}",
+                  align="R", new_x="LMARGIN", new_y="NEXT")
+        maximo = max(f["total"] for f in serie["filas"]) or 1
+        x0, y0 = self.l_margin, self.get_y() + 4
+        alto_g = alto - 12
+        paso = ancho / len(serie["filas"])
+        ancho_barra = min(paso * 0.55, 18)
+        self.set_draw_color(200, 190, 225)
+        self.line(x0, y0 + alto_g, x0 + ancho, y0 + alto_g)
+        for i, f in enumerate(serie["filas"]):
+            xb = x0 + i * paso + (paso - ancho_barra) / 2
+            yb = y0 + alto_g
+            for clave, _, color in COLORES_LECHE:
+                h = alto_g * f["ml"][clave] / maximo
+                if h > 0:
+                    self.set_fill_color(*color)
+                    self.rect(xb, yb - h, ancho_barra, h, "F")
+                    yb -= h
+            self.set_font("Helvetica", "B", 7)
+            self.set_text_color(*TEXTO)
+            self.set_xy(x0 + i * paso, yb - 4.2)
+            self.cell(paso, 4, num(f["total"]) if f["total"] else "", align="C")
+            self.set_font("Helvetica", "", 7)
+            self.set_text_color(*SUAVE)
+            self.set_xy(x0 + i * paso, y0 + alto_g + 0.8)
+            self.cell(paso, 4, f["etiqueta"], align="C")
+        self.set_text_color(*TEXTO)
+        self.set_y(y0 + alto_g + 7)
+
+    def leyenda_leche(self):
+        self.set_font("Helvetica", "", 7.5)
+        x = self.l_margin
+        for _, nombre, color in COLORES_LECHE:
+            self.set_fill_color(*color)
+            self.rect(x, self.get_y() + 0.8, 3, 3, "F")
+            self.set_xy(x + 4, self.get_y())
+            self.cell(self.get_string_width(nombre) + 2, 4.6, nombre)
+            x += 6 + self.get_string_width(nombre) + 6
+        self.ln(6)
+
     def barras(self, valores, alto=32):
         """Gráfico de barras simple (ml extraídos por día)."""
         ancho_total = self.w - self.l_margin - self.r_margin
@@ -510,6 +603,20 @@ def generar_pdf(d):
     pdf.tabla(["Tipo de leche", "Registros", "Mililitros"],
               [(t, num(n), num(ml, "ml")) for t, n, ml in d["por_leche"]],
               (90, 45, 45), ("LEFT", "RIGHT", "RIGHT"))
+    if pdf.get_y() > pdf.h - 125:  # título, leyenda, los dos gráficos y la tabla van juntos
+        pdf.add_page()
+    pdf.subtitulo("Donantes y madres que solo hacen extracción (ml por tipo de leche, últimos 6 meses)")
+    pdf.leyenda_leche()
+    for serie in d["por_modalidad"]:
+        pdf.grafico_leche_mensual(serie)
+    filas_mes = []
+    for serie in d["por_modalidad"]:
+        f = serie["filas"][-1]
+        filas_mes.append(("Donantes" if serie["modalidad"] == "donante" else "Solo extracción", num(f["madres"]),
+                          num(f["extracciones"])) + tuple(num(f["ml"][k], "ml") for k, _, _ in COLORES_LECHE[:3])
+                         + (num(f["total"], "ml"),))
+    pdf.tabla(["En el mes", "Madres", "Extracc.", "Calostro", "Transición", "Madura", "Total"],
+              filas_mes, (32, 18, 20, 27, 27, 27, 29), ("LEFT",) + ("RIGHT",) * 6)
     pdf.subtitulo("Donación por madre")
     pdf.tabla(["Madre donante", "Barrio", "Extracciones", "Mililitros"],
               [(m, br or "", num(n), num(ml, "ml")) for m, br, n, ml in d["madres_ml"]],

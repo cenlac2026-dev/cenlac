@@ -453,3 +453,9 @@ tr.fila-donante td:first-child { box-shadow: inset 4px 0 0 #8fc3e6; }
 tr.fila-extraccion td:first-child { box-shadow: inset 4px 0 0 #e8c66a; }
 .w-tipo { flex: none; font-size: .9rem; width: 1.3em; text-align: center; }
 .w-referencias { margin: 0 0 4px; font-size: .72rem; color: var(--suave); }
+.leyenda-leche { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .82rem; color: var(--suave); }
+.leyenda-leche i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.grafico-donante { border-top: 4px solid #8fc3e6; }
+.grafico-extraccion { border-top: 4px solid #e8c66a; }
+.g-barra rect:hover { opacity: .8; }
+.g-barra .g-valor { opacity: 1; font-size: 11px; }
