@@ -18,6 +18,7 @@
     .datos { display: flex; flex-direction: column; gap: 0.8mm; font-size: 8.5pt; line-height: 1.15; min-width: 0; }
     .datos .titulo { font-size: 7pt; color: var(--suave); text-transform: uppercase; letter-spacing: .03em; font-weight: 700; }
     .datos .madre { font-size: 10pt; font-weight: 800; overflow-wrap: anywhere; }
+    .datos .modalidad { font-size: 7.5pt; font-weight: 800; letter-spacing: .02em; border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; align-self: flex-start; }
     .datos .leche { font-weight: 700; }
     .datos .ml { font-size: 13pt; font-weight: 800; }
     .nota { text-align: center; color: var(--suave); font-size: .85rem; margin-top: 14px; }
@@ -39,12 +40,13 @@
     <div class="datos">
       <span class="titulo">Centro de Lactancia N° 10 · Registro {{ e.id }}</span>
       <span class="madre">{{ e.madre }}</span>
+      <span class="modalidad">{{ '💧 DONANTE' if e.modalidad == 'donante' else '🍼 SOLO EXTRACCIÓN' }}</span>
       <span class="leche">{{ e.leche }}</span>
       <span class="ml">{{ e.cantidad }}</span>
       <span>{{ e.fecha }} · {{ e.hora }} h</span>
     </div>
   </div>
-  <p class="nota">Etiqueta de 70 × 45 mm. El código QR contiene: madre, tipo de leche, cantidad, fecha y hora.</p>
+  <p class="nota">Etiqueta de 70 × 45 mm. El código QR contiene: madre, si es donante o solo extracción, tipo de leche, cantidad, fecha y hora.</p>
   {% if imprimir %}<script>window.addEventListener('load', function () { window.print(); });</script>{% endif %}
 </body>
 </html>

@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% from "_modalidad.html" import sello %}
 {% block titulo %}{{ madre.apellido }}, {{ madre.nombre }}{% endblock %}
 {% block contenido %}
 <div class="encabezado">
-  <h1>{{ madre.apellido }}, {{ madre.nombre }}</h1>
+  <h1>{{ madre.apellido }}, {{ madre.nombre }} {{ sello(madre.modalidad) }}</h1>
   <div>
     {% if puede('editar') %}<a class="boton p-editar" href="{{ url_for('editar', madre_id=madre.id) }}">✏️ Editar</a>{% endif %}
     {% if puede('eliminar') %}<form method="post" action="{{ url_for('eliminar', madre_id=madre.id) }}" class="en-linea p-eliminar"
@@ -21,7 +22,7 @@
     <dt class="p-completo">Dirección</dt><dd class="p-completo">{{ madre.direccion }}</dd>{% endif %}
     <dt>Barrio</dt><dd>{{ madre.barrio }}</dd>
     <dt>Localidad</dt><dd>{{ madre.localidad }}</dd>
-    <dt>Tipo de registro</dt><dd>{{ '💧' if (madre.modalidad or 'donante') == 'donante' else '🍼' }} {{ MODALIDADES[madre.modalidad or 'donante'] }}</dd>
+    <dt>Tipo de registro</dt><dd>{{ sello(madre.modalidad, chico=True) }}</dd>
     <dt>Situación</dt><dd>{{ SITUACIONES[madre.situacion] }}{% if madre.tipo_internacion %}: {{ INTERNACIONES[madre.tipo_internacion] }}{% endif %}</dd>
     <dt>Fecha de registro</dt><dd>{{ madre.fecha_registro | fecha }}</dd>
     <dt>{{ 'Leche donada' if (madre.modalidad or 'donante') == 'donante' else 'Leche extraída' }}</dt><dd><b>{{ ext.total_ml | ml }}</b> en {{ ext.cantidad }} registro(s)</dd>

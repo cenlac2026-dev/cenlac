@@ -562,7 +562,7 @@ def widget():
     Solo datos básicos: sin DNI, teléfono, domicilio ni datos de salud."""
     db = get_db()
     madres = db.execute("""SELECT m.id, m.apellido, m.nombre, m.barrio, m.localidad, m.situacion, m.tipo_internacion,
-                                  m.fecha_registro,
+                                  m.fecha_registro, m.modalidad,
                                   (SELECT COALESCE(SUM(e.cantidad_ml), 0) FROM extracciones e WHERE e.madre_id = m.id) AS total_ml,
                                   (SELECT MAX(e.fecha_hora) FROM extracciones e WHERE e.madre_id = m.id) AS ultima
                            FROM madres m WHERE m.fecha_alta IS NULL OR m.fecha_alta = ''
@@ -806,7 +806,7 @@ def nueva_extraccion(madre_id):
 def datos_etiqueta(ext_id):
     """Datos de la etiqueta de una extracción: texto legible y código QR en SVG."""
     fila = get_db().execute(
-        "SELECT e.*, m.nombre, m.apellido FROM extracciones e JOIN madres m ON m.id = e.madre_id WHERE e.id = ?",
+        "SELECT e.*, m.nombre, m.apellido, m.modalidad FROM extracciones e JOIN madres m ON m.id = e.madre_id WHERE e.id = ?",
         (ext_id,)).fetchone()
     if fila is None:
         return None
@@ -816,6 +816,7 @@ def datos_etiqueta(ext_id):
     texto = "\n".join([
         f"CENTRO DE LACTANCIA N° 10 - {TIPOS_REGISTRO[fila['tipo']]} N° {fila['id']}",
         f"Madre: {fila['apellido']}, {fila['nombre']}",
+        f"Madre {'DONANTE' if (fila['modalidad'] or 'donante') == 'donante' else 'SOLO EXTRACCIÓN'}",
         f"Leche: {leche}",
         f"Cantidad: {cantidad}",
         f"Fecha y hora: {fecha_hora:%d/%m/%Y %H:%M}",
@@ -823,7 +824,7 @@ def datos_etiqueta(ext_id):
     qr = segno.make(texto, error="m")
     return {
         "id": fila["id"], "madre_id": fila["madre_id"], "madre": f"{fila['apellido']}, {fila['nombre']}",
-        "tipo": TIPOS_REGISTRO[fila["tipo"]], "leche": leche, "tipo_leche": fila["tipo_leche"],
+        "tipo": TIPOS_REGISTRO[fila["tipo"]], "leche": leche, "modalidad": fila["modalidad"] or "donante", "tipo_leche": fila["tipo_leche"],
         "cantidad": cantidad, "fecha": f"{fecha_hora:%d/%m/%Y}", "hora": f"{fecha_hora:%H:%M}", "texto": texto,
         "svg": qr.svg_inline(border=2, dark="#2b2440", omitsize=True),
     }

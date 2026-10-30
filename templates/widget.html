@@ -1,4 +1,5 @@
 <!doctype html>
+{% from "_modalidad.html" import sello %}
 <html lang="es">
 <head>
   <meta charset="utf-8">
@@ -35,16 +36,19 @@
     <span>Madres activas <b>{{ madres | length }}</b></span>
     <input type="search" id="w-buscar" placeholder="🔍 Buscar" aria-label="Buscar madre">
   </div>
+  <p class="w-referencias">💧 Donante · 🍼 Solo extracción</p>
   <ul class="w-lista">
     {% for m in madres %}
     <li>
       <details>
         <summary>
           <span class="w-punto {{ m.situacion }}" title="{{ SITUACIONES[m.situacion] }}"></span>
+          <span class="w-tipo modalidad-{{ m.modalidad or 'donante' }}" title="{{ 'Donante' if (m.modalidad or 'donante') == 'donante' else 'Solo extracción' }}">{{ '💧' if (m.modalidad or 'donante') == 'donante' else '🍼' }}</span>
           <span class="w-nombre"><b>{{ m.apellido }}</b>, {{ m.nombre }}</span>
           <span class="w-ml">{{ m.total_ml | ml }}</span>
         </summary>
         <dl>
+          <dt>Tipo</dt><dd>{{ sello(m.modalidad, chico=True) }}</dd>
           <dt>Situación</dt><dd>{{ SITUACIONES[m.situacion] }}{% if m.tipo_internacion %} · {{ INTERNACIONES[m.tipo_internacion] }}{% endif %}</dd>
           <dt>Barrio</dt><dd>{{ m.barrio or '-' }}{% if m.localidad %}, {{ m.localidad }}{% endif %}</dd>
           <dt>Bebé(s)</dt><dd>{{ (bebes.get(m.id) or ['-']) | join(', ') }}</dd>

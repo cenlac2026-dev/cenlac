@@ -1,0 +1,6 @@
+{# Sello que distingue a la madre donante (💧) de la que solo realiza extracciones (🍼). #}
+{% macro sello(modalidad, chico=False) -%}
+{%- set k = modalidad or 'donante' -%}
+<span class="sello-modalidad modalidad-{{ k }}{{ ' chico' if chico }}" title="{{ 'Madre donante: dona su leche al banco' if k == 'donante' else 'Solo extracción: no dona su leche' }}">
+  <span aria-hidden="true">{{ '💧' if k == 'donante' else '🍼' }}</span> {{ 'DONANTE' if k == 'donante' else 'SOLO EXTRACCIÓN' }}</span>
+{%- endmacro %}

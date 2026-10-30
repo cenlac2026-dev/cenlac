@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_modalidad.html" import sello %}
 {% block contenido %}
 <section class="bienvenida">
   <img class="ilustracion" src="{{ url_for('static', filename='ilustracion-bebe.svg') }}" alt="">
@@ -40,15 +41,14 @@
   </thead>
   <tbody>
     {% for m in madres %}
-    <tr data-riesgo="{{ 1 if m.con_riesgo else 0 }}" data-alta="{{ m.fecha_alta or '' }}" data-registro="{{ m.fecha_registro }}">
-      <td><a href="{{ url_for('ver', madre_id=m.id) }}"><b>{{ m.apellido }}</b>, {{ m.nombre }}</a></td>
+    <tr class="fila-{{ m.modalidad or 'donante' }}" data-riesgo="{{ 1 if m.con_riesgo else 0 }}" data-alta="{{ m.fecha_alta or '' }}" data-registro="{{ m.fecha_registro }}">
+      <td><a href="{{ url_for('ver', madre_id=m.id) }}"><b>{{ m.apellido }}</b>, {{ m.nombre }}</a><br>{{ sello(m.modalidad, chico=True) }}</td>
       {% if puede('completo') %}<td class="p-completo">{{ m.dni }}</td>{% endif %}
       <td>{{ m.barrio }}</td>
       <td>{{ m.localidad }}</td>
       <td>
         <span class="etiqueta {{ m.situacion }}">{{ '🏥' if m.situacion == 'internada' else '🏠' }} {{ SITUACIONES[m.situacion] }}</span>
         {% if m.tipo_internacion %}<br><small>{{ INTERNACIONES[m.tipo_internacion] }}</small>{% endif %}
-        <br><span class="etiqueta modalidad-{{ m.modalidad or 'donante' }}">{{ '💧' if (m.modalidad or 'donante') == 'donante' else '🍼' }} {{ MODALIDADES[m.modalidad or 'donante'] }}</span>
         {% if m.con_riesgo and puede('completo') %}<span class="p-completo"><br><span class="etiqueta etiqueta-riesgo">⚠️ Riesgo</span></span>{% endif %}
         {% if m.fecha_alta %}<br><span class="etiqueta etiqueta-alta">🎓 Alta {{ m.fecha_alta | fecha }}</span>{% endif %}
       </td>

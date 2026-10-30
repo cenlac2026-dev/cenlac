@@ -442,3 +442,14 @@ body.widget { font-size: 14px; min-height: 100vh; background-image: none; }
 .envivo-aviso.sale { opacity: 0; transform: translateY(8px); }
 .envivo-aviso button { width: auto; margin-left: auto; padding: 4px 12px; font-size: .8rem; border-radius: 999px; background: #fff; color: var(--texto); box-shadow: none; }
 body.widget .envivo-avisos { right: 8px; left: 8px; bottom: 8px; }
+
+/* Sello donante / solo extracción: se distingue a simple vista en el listado, la ficha y la vista mini. */
+.sello-modalidad { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 3px 12px; font-size: .8rem; font-weight: 800; letter-spacing: .03em; vertical-align: middle; border: 2px solid; white-space: nowrap; }
+.sello-modalidad.chico { font-size: .68rem; padding: 1px 8px; border-width: 1.5px; margin-top: 4px; }
+.sello-modalidad.modalidad-donante { background: #e6f2fb; color: #2f6488; border-color: #8fc3e6; }
+.sello-modalidad.modalidad-extraccion { background: #fff4cf; color: #8a6414; border-color: #e8c66a; }
+h1 .sello-modalidad { margin-left: 8px; position: relative; top: -3px; }
+tr.fila-donante td:first-child { box-shadow: inset 4px 0 0 #8fc3e6; }
+tr.fila-extraccion td:first-child { box-shadow: inset 4px 0 0 #e8c66a; }
+.w-tipo { flex: none; font-size: .9rem; width: 1.3em; text-align: center; }
+.w-referencias { margin: 0 0 4px; font-size: .72rem; color: var(--suave); }
