@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_modalidad.html" import sello %}
 {% block titulo %}Estadísticas{% endblock %}
 {% macro porc(n, total) %}{{ ((n * 100 / total) | round(1)) if total else 0 }}%{% endmacro %}
 {% block contenido %}
@@ -132,18 +133,49 @@
   <div class="cifra"><span>{{ d.bebes_cronicas }}</span>🩺 Bebés con patologías crónicas ({{ porc(d.bebes_cronicas, d.bebes) }})</div>
 </div>
 
+<section class="tarjeta listas-modalidad">
+  <h2>📋 Listado de madres por tipo</h2>
+  <p class="nota">Cada lista muestra primero las madres activas (sin alta). "Este mes" son los ml extraídos en el mes en curso.</p>
+  <div class="listas-dos">
+    {% for l in listas %}
+    <div class="lista-modalidad lista-{{ l.clave }}">
+      <h3>{{ sello(l.clave) }} <span>{{ l.filas | length }} madre{{ 's' if l.filas | length != 1 }} · {{ l.activas }} activa{{ 's' if l.activas != 1 }} · {{ l.ml_mes | ml }} este mes · {{ l.total_ml | ml }} en total</span></h3>
+      {% if l.filas %}
+      <div class="tabla-contenedor tabla-alta">
+      <table>
+        <thead><tr><th>Madre</th><th>Barrio</th><th class="num">Extracc.</th><th class="num">Este mes</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {% for f in l.filas %}
+          <tr class="fila-{{ l.clave }}">
+            <td><a href="{{ url_for('ver', madre_id=f.id) }}"><b>{{ f.apellido }}</b>, {{ f.nombre }}</a>
+              <br><small>{% if f.fecha_alta %}🎓 Alta {{ f.fecha_alta | fecha }}{% else %}{{ '🏥' if f.situacion == 'internada' else '🏠' }} {{ SITUACIONES[f.situacion] }}{% endif %}{% if f.ultima %} · últ. {{ f.ultima[:10] | fecha }}{% endif %}</small></td>
+            <td>{{ f.barrio or '' }}</td>
+            <td class="num">{{ f.extracciones }}</td>
+            <td class="num sin-corte">{{ f.ml_mes | ml if f.ml_mes else '-' }}</td>
+            <td class="num sin-corte"><b>{{ f.total_ml | ml }}</b></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% else %}<p class="vacio">No hay madres de este tipo registradas.</p>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="tarjeta tabla-riesgo">
-  <h2>⚠️ Madres donantes y bebés con factores de riesgo <span class="contador-riesgo">{{ riesgo | length }}</span></h2>
+  <h2>⚠️ Madres y bebés con factores de riesgo <span class="contador-riesgo">{{ riesgo | length }}</span></h2>
   {% if riesgo %}
   <div class="tabla-contenedor">
   <table>
     <thead>
-      <tr><th>Madre donante</th><th>Dirección</th><th>Barrio</th><th>Teléfono</th><th>Factores de riesgo de la madre</th><th>Bebé y factores de riesgo</th></tr>
+      <tr><th>Madre</th><th>Dirección</th><th>Barrio</th><th>Teléfono</th><th>Factores de riesgo de la madre</th><th>Bebé y factores de riesgo</th></tr>
     </thead>
     <tbody>
       {% for r in riesgo %}
       <tr>
-        <td><a href="{{ url_for('ver', madre_id=r.id) }}"><b>{{ r.apellido }}</b>, {{ r.nombre }}</a></td>
+        <td><a href="{{ url_for('ver', madre_id=r.id) }}"><b>{{ r.apellido }}</b>, {{ r.nombre }}</a><br>{{ sello(r.modalidad, chico=True) }}</td>
         <td>{{ r.direccion or '' }}{% if r.localidad %}<br><small>{{ r.localidad }}</small>{% endif %}</td>
         <td>{{ r.barrio or '' }}</td>
         <td class="sin-corte">{{ r.telefono or '' }}</td>

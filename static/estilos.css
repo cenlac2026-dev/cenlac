@@ -459,3 +459,12 @@ tr.fila-extraccion td:first-child { box-shadow: inset 4px 0 0 #e8c66a; }
 .grafico-extraccion { border-top: 4px solid #e8c66a; }
 .g-barra rect:hover { opacity: .8; }
 .g-barra .g-valor { opacity: 1; font-size: 11px; }
+.listas-dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 18px; }
+.lista-modalidad { min-width: 0; border-radius: 16px; padding: 12px; background: var(--crema); border: 1px solid var(--borde); }
+.lista-donante { border-top: 4px solid #8fc3e6; }
+.lista-extraccion { border-top: 4px solid #e8c66a; }
+.lista-modalidad h3 { margin: 0 0 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 1rem; }
+.lista-modalidad h3 span:not(.sello-modalidad) { font-size: .82rem; font-weight: 600; color: var(--suave); }
+.tabla-alta { max-height: 460px; overflow-y: auto; }
+.tabla-alta thead th { position: sticky; top: 0; z-index: 1; }
+.lista-modalidad th, .lista-modalidad td { padding: 8px 9px; font-size: .88rem; }

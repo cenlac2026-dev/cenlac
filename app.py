@@ -1461,7 +1461,7 @@ def estadisticas():
         ).fetchall(),
     }
     riesgo = db.execute(
-        """SELECT m.id, m.apellido, m.nombre, m.direccion, m.barrio, m.localidad, m.telefono,
+        """SELECT m.id, m.apellido, m.nombre, m.direccion, m.barrio, m.localidad, m.telefono, m.modalidad,
                   m.factores_riesgo AS riesgo_madre,
                   (SELECT group_concat(b.nombre || ' ' || b.apellido_materno || ': ' || b.factores_riesgo, ' | ')
                      FROM bebes b WHERE b.madre_id = m.id AND COALESCE(b.factores_riesgo, '') <> '') AS riesgo_bebes
@@ -1470,8 +1470,25 @@ def estadisticas():
                OR EXISTS (SELECT 1 FROM bebes b WHERE b.madre_id = m.id AND COALESCE(b.factores_riesgo, '') <> '')
             ORDER BY m.apellido, m.nombre"""
     ).fetchall()
+    # Listado de madres separado en donantes y solo extracción (activas primero).
+    mes = date.today().strftime("%Y-%m")
+    listado = db.execute(
+        """SELECT m.id, m.apellido, m.nombre, m.barrio, m.localidad, m.situacion, m.fecha_alta, m.modalidad,
+                  (SELECT COUNT(*) FROM extracciones e WHERE e.madre_id = m.id AND e.tipo = 'extraccion') AS extracciones,
+                  (SELECT COALESCE(SUM(e.cantidad_ml), 0) FROM extracciones e WHERE e.madre_id = m.id) AS total_ml,
+                  (SELECT COALESCE(SUM(e.cantidad_ml), 0) FROM extracciones e
+                    WHERE e.madre_id = m.id AND substr(e.fecha_hora, 1, 7) = ?) AS ml_mes,
+                  (SELECT MAX(e.fecha_hora) FROM extracciones e WHERE e.madre_id = m.id) AS ultima
+             FROM madres m
+            ORDER BY CASE WHEN COALESCE(m.fecha_alta, '') = '' THEN 0 ELSE 1 END, m.apellido, m.nombre""", (mes,)).fetchall()
+    listas = []
+    for clave, titulo in (("donante", "Madres donantes"), ("extraccion", "Madres que solo hacen extracción")):
+        filas = [f for f in listado if (f["modalidad"] or "donante") == clave]
+        listas.append({"clave": clave, "titulo": titulo, "filas": filas,
+                       "activas": sum(1 for f in filas if not f["fecha_alta"]),
+                       "ml_mes": sum(f["ml_mes"] or 0 for f in filas), "total_ml": sum(f["total_ml"] or 0 for f in filas)})
     return render_template("estadisticas.html", d=datos, proy=datos_proyeccion(db), riesgo=riesgo,
-                           por_modalidad=graficos_modalidad(db))
+                           por_modalidad=graficos_modalidad(db), listas=listas)
 
 
 init_db()
