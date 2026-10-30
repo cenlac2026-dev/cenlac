@@ -1,7 +1,7 @@
 {
-  "name": "CENLAC - Centro de Lactancia",
+  "name": "CENLAC - Centro de Lactancia N° 10",
   "short_name": "CENLAC",
-  "description": "CENLAC: registro de madres donantes del Centro de Lactancia",
+  "description": "CENLAC: registro de madres donantes del Centro de Lactancia N° 10",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf8ff",

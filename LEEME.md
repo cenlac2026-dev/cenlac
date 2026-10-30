@@ -1,5 +1,7 @@
 # CENLAC: registro de madres donantes (Centro de Lactancia)
 
+Aplicación del **Centro de Lactancia N° 10**: el número aparece en el encabezado, la pantalla de ingreso, la vista mini, el cierre mensual, el reconocimiento de alta y las etiquetas QR.
+
 App web en Python + Flask + SQLite. Registra madres donantes, sus bebés y el padre, y muestra estadísticas.
 
 ## Cómo ejecutarla

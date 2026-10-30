@@ -1,4 +1,4 @@
-"""CENLAC - Registro de madres donantes del Centro de Lactancia."""
+"""CENLAC - Registro de madres donantes del Centro de Lactancia N° 10."""
 import base64
 import os
 import socket
@@ -632,7 +632,7 @@ $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environme
 $s.TargetPath = $nav
 $s.Arguments = $argumentos
 if (Test-Path $ico) {{ $s.IconLocation = $ico }}
-$s.Description = 'CENLAC - Centro de Lactancia'
+$s.Description = 'CENLAC - Centro de Lactancia N° 10'
 $s.Save()
 Start-Process $nav -ArgumentList $argumentos
 """
@@ -814,7 +814,7 @@ def datos_etiqueta(ext_id):
     leche = TIPOS_LECHE.get(fila["tipo_leche"], "Sin indicar")
     cantidad = formato_ml(fila["cantidad_ml"]) if fila["cantidad_ml"] is not None else "Sin indicar"
     texto = "\n".join([
-        f"CENTRO DE LACTANCIA - {TIPOS_REGISTRO[fila['tipo']]} N° {fila['id']}",
+        f"CENTRO DE LACTANCIA N° 10 - {TIPOS_REGISTRO[fila['tipo']]} N° {fila['id']}",
         f"Madre: {fila['apellido']}, {fila['nombre']}",
         f"Leche: {leche}",
         f"Cantidad: {cantidad}",

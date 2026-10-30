@@ -215,7 +215,7 @@ class InformePDF(FPDF):
         self.set_xy(15, 6)
         self.set_text_color(255, 255, 255)
         self.set_font("Helvetica", "B", 15)
-        self.cell(0, 7, "Centro de Lactancia - Banco de leche humana")
+        self.cell(0, 7, "Centro de Lactancia N° 10 - Banco de leche humana")
         self.set_xy(15, 13)
         self.set_font("Helvetica", "", 10)
         self.cell(0, 6, f"Cierre mensual: {self.titulo_informe}")

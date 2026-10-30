@@ -16,7 +16,7 @@
 <body class="widget" data-ultima-novedad="{{ ultima_novedad }}">
   <header class="w-barra">
     <img src="{{ url_for('static', filename='logo.svg') }}" alt="" width="30" height="30">
-    <div class="w-titulo">CENLAC<small>Centro de Lactancia · {{ resumen.nombre_mes | capitalize }} {{ resumen.anio_actual }}</small></div>
+    <div class="w-titulo">CENLAC<small>Centro de Lactancia N° 10 · {{ resumen.nombre_mes | capitalize }} {{ resumen.anio_actual }}</small></div>
     <span class="w-reloj" id="w-reloj">{{ ahora.strftime('%H:%M') }}</span>
   </header>
 

@@ -139,7 +139,7 @@ class PDFAlta(FPDF):
         self.set_xy(16, 4.5)
         self.set_font("Helvetica", "B", 11)
         self.set_text_color(255, 255, 255)
-        self.cell(0, 7, limpiar("Centro de Lactancia - Guía para tu alta"))
+        self.cell(0, 7, limpiar("Centro de Lactancia N° 10 - Guía para tu alta"))
         self.set_y(24)
         self.set_text_color(*TEXTO)
 
@@ -210,7 +210,7 @@ def portada(pdf, d, fecha_alta):
     pdf.ln(8)
     pdf.set_font("Helvetica", "", 11)
     pdf.set_text_color(*TEXTO)
-    pdf.cell(0, 6, limpiar("El Centro de Lactancia entrega este reconocimiento a"), align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, limpiar("El Centro de Lactancia N° 10 entrega este reconocimiento a"), align="C", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(3)
     pdf.set_font("Helvetica", "B", 24)
     pdf.set_text_color(*LAVANDA)
@@ -260,7 +260,7 @@ def portada(pdf, d, fecha_alta):
     pdf.cell(0, 6, limpiar(f"Fecha de alta: {fecha_larga(fecha_alta)}"), align="C", new_x="LMARGIN", new_y="NEXT")
     y = H - 36
     pdf.set_draw_color(*SUAVE)
-    for x, etq in ((32, "Firma y sello del Centro de Lactancia"), (W - 97, "Equipo de salud")):
+    for x, etq in ((32, "Firma y sello del Centro de Lactancia N° 10"), (W - 97, "Equipo de salud")):
         pdf.line(x, y, x + 65, y)
         pdf.set_xy(x, y + 1.5)
         pdf.set_font("Helvetica", "", 8.5)
@@ -319,7 +319,7 @@ def pagina_lactancia(pdf, d, fecha_alta, observaciones):  # consejería en lacta
     pdf.multi_cell(0, 5, limpiar("Si tenés dolor al amamantar, grietas, poca leche o cualquier duda, consultanos: "
                                  "te acompañamos."), align="L", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 9.5)
-    pdf.cell(0, 7, limpiar("Teléfono del Centro de Lactancia: ______________________   Horario: ______________"),
+    pdf.cell(0, 7, limpiar("Teléfono del Centro de Lactancia N° 10: ______________________   Horario: ______________"),
              new_x="LMARGIN", new_y="NEXT")
 
 
@@ -422,7 +422,7 @@ def generar_pdf(d, fecha_alta=None, observaciones=""):
     pdf = PDFAlta()
     pdf.alias_nb_pages()
     pdf.set_title(limpiar(f"Alta y reconocimiento - {d['madre']['nombre']} {d['madre']['apellido']}"))
-    pdf.set_author("Centro de Lactancia")
+    pdf.set_author("Centro de Lactancia N° 10")
     fecha_alta = fecha_alta or date.today().isoformat()
     portada(pdf, d, fecha_alta)
     pagina_lactancia(pdf, d, fecha_alta, observaciones)
