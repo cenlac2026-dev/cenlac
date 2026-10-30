@@ -46,8 +46,8 @@ ACCIONES = {
 }
 TIPOS_ACTIVIDAD = {"educacion": "una actividad de educación", "limpieza": "una limpieza del sector",
                    "difusion": "una actividad de difusión", "carteleria": "una actividad de cartelería",
-                   "salida": "una salida", "envio_leche": "un envío de leche humana",
-                   "recepcion_leche": "una recepción de leche humana"}
+                   "salida": "una salida", "envio_leche": "un envío de leche a pasteurizar",
+                   "recepcion_leche": "una recepción de leche pasteurizada"}
 CONECTADO_SEGUNDOS = 45
 GUARDAR_DIAS = 60
 

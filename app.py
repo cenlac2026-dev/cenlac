@@ -75,10 +75,11 @@ ACTIVIDADES = {
     "difusion": ("Difusión", "📣", "Medio y alcance, por ejemplo charla en sala de espera, redes sociales o radio local."),
     "carteleria": ("Cartelería", "🪧", "Carteles colocados o renovados, con su ubicación y contenido."),
     "salida": ("Salidas", "🚐", "Motivo y resultado de la salida, por ejemplo retiro de leche a domicilio, visita a una mamá, charla en un centro de salud o escuela."),
-    "envio_leche": ("Envío de leche humana", "📤", "Tipo de leche enviada (pasteurizada, cruda, calostro), estado de la cadena de frío y quién la recibió."),
-    "recepcion_leche": ("Recepción de leche humana", "📥", "Tipo de leche recibida, estado de los frascos y de la cadena de frío, y quién la entregó."),
+    "envio_leche": ("Envío de leche a pasteurizar", "📤", "Leche cruda enviada (madura, calostro), estado de la cadena de frío y quién la recibió en la institución."),
+    "recepcion_leche": ("Recepción de leche pasteurizada", "📥", "Leche pasteurizada que regresó: estado de los frascos y de la cadena de frío, y quién la entregó."),
 }
-# Envío y recepción de leche: se registra la institución o lugar, los ml, los frascos y el lote.
+# Circuito de pasteurización: la leche cruda se envía a otra institución para pasteurizarla y esa institución
+# la devuelve pasteurizada. En los dos casos se registra la institución, los ml, los frascos y el lote.
 ACTIVIDADES_LECHE = ("envio_leche", "recepcion_leche")
 
 ESQUEMA = """
@@ -959,7 +960,7 @@ def actividades():
         cantidad_ml = frascos = None
         if tipo in ACTIVIDADES_LECHE:
             if not lugar:
-                errores.append("Indique la institución o el lugar " + ("al que se envió la leche." if tipo == "envio_leche" else "del que se recibió la leche."))
+                errores.append("Indique la institución " + ("a la que se envió la leche a pasteurizar." if tipo == "envio_leche" else "que devolvió la leche pasteurizada."))
             try:
                 cantidad_ml = float(texto("cantidad_ml").replace(",", "."))
                 if cantidad_ml <= 0:
@@ -987,8 +988,8 @@ def actividades():
             )
             db.commit()
             if tipo in ACTIVIDADES_LECHE:
-                flash(f"{ACTIVIDADES[tipo][0]} registrado: {formato_ml(cantidad_ml)}." if tipo == "envio_leche"
-                      else f"{ACTIVIDADES[tipo][0]} registrada: {formato_ml(cantidad_ml)}.")
+                flash(f"Envío a pasteurizar registrado: {formato_ml(cantidad_ml)} a {lugar}." if tipo == "envio_leche"
+                      else f"Recepción de leche pasteurizada registrada: {formato_ml(cantidad_ml)} de {lugar}.")
             else:
                 flash(f"Actividad de {ACTIVIDADES[tipo][0].lower()} registrada.")
             return redirect(url_for("actividades"))
@@ -1005,9 +1006,17 @@ def actividades():
     leche_mes = dict(db.execute("SELECT tipo, COALESCE(SUM(cantidad_ml), 0) FROM actividades "
                                 "WHERE tipo IN ('envio_leche', 'recepcion_leche') AND substr(fecha_hora, 1, 7) = ? GROUP BY tipo",
                                 (mes,)).fetchall())
+    # Leche que salió a pasteurizar y todavía no volvió (todo el histórico) e instituciones ya usadas.
+    leche_total = dict(db.execute("SELECT tipo, COALESCE(SUM(cantidad_ml), 0) FROM actividades "
+                                  "WHERE tipo IN ('envio_leche', 'recepcion_leche') GROUP BY tipo").fetchall())
+    en_pasteurizacion = max(leche_total.get("envio_leche", 0) - leche_total.get("recepcion_leche", 0), 0)
+    instituciones = [f[0] for f in db.execute(
+        "SELECT lugar FROM actividades WHERE tipo IN ('envio_leche', 'recepcion_leche') AND lugar IS NOT NULL "
+        "GROUP BY lugar ORDER BY MAX(fecha_hora) DESC LIMIT 20").fetchall()]
     ahora = datetime.now()
     return render_template(
         "actividades.html", actividades=lista, filtro=filtro, conteo=conteo, leche_mes=leche_mes,
+        en_pasteurizacion=en_pasteurizacion, instituciones=instituciones,
         tipo_elegido=request.args.get("tipo") or "educacion",
         hoy=ahora.strftime("%Y-%m-%d"), ahora=ahora.strftime("%H:%M"),
     )

@@ -545,17 +545,18 @@ def generar_pdf(d):
                    for f, lg, t in d["salidas"]], (18, 55, 107))
 
     if d.get("leche_mov"):
-        pdf.subtitulo("Envío y recepción de leche humana")
+        pdf.subtitulo("Pasteurización: leche enviada y leche pasteurizada recibida")
         totales = {"envio_leche": 0, "recepcion_leche": 0}
         for f in d["leche_mov"]:
             totales[f[1]] += f[3] or 0
-        pdf.tabla(["Fecha", "Movimiento", "Institución o lugar", "Mililitros", "Frascos", "Lote"],
-                  [(datetime.strptime(f[:10], "%Y-%m-%d").strftime("%d/%m"), "Envío" if t == "envio_leche" else "Recepción",
+        pdf.tabla(["Fecha", "Movimiento", "Institución", "Mililitros", "Frascos", "Lote"],
+                  [(datetime.strptime(f[:10], "%Y-%m-%d").strftime("%d/%m"), "Enviada" if t == "envio_leche" else "Recibida",
                     lg or "", num(ml, "ml"), num(fr) if fr else "", lt or "")
                    for f, t, lg, ml, fr, lt in d["leche_mov"]],
                   (16, 24, 66, 28, 18, 28), ("LEFT", "LEFT", "LEFT", "RIGHT", "RIGHT", "LEFT"))
         pdf.tabla(["Total del mes", "Mililitros"],
-                  [("Enviados", num(totales["envio_leche"], "ml")), ("Recibidos", num(totales["recepcion_leche"], "ml"))],
+                  [("Leche cruda enviada a pasteurizar", num(totales["envio_leche"], "ml")),
+                   ("Leche pasteurizada recibida", num(totales["recepcion_leche"], "ml"))],
                   (130, 50), ("LEFT", "RIGHT"))
 
     pdf.seccion("7. Actividades por agente")

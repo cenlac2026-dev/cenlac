@@ -7,8 +7,9 @@
     {% for k, (nombre, icono, _) in ACTIVIDADES.items() %}
       <span><b>{{ conteo.get(k, 0) }}</b>{{ icono }} {{ nombre }}</span>
     {% endfor %}
-    <span><b>{{ leche_mes.get('envio_leche', 0) | ml }}</b>📤 enviados este mes</span>
-    <span><b>{{ leche_mes.get('recepcion_leche', 0) | ml }}</b>📥 recibidos este mes</span>
+    <span><b>{{ leche_mes.get('envio_leche', 0) | ml }}</b>📤 enviados a pasteurizar este mes</span>
+    <span><b>{{ leche_mes.get('recepcion_leche', 0) | ml }}</b>📥 pasteurizada recibida este mes</span>
+    <span title="Total enviado a pasteurizar menos total recibido pasteurizado"><b>{{ en_pasteurizacion | ml }}</b>⏳ en pasteurización (sin regresar)</span>
   </div>
 </div>
 
@@ -32,11 +33,13 @@
       <label class="ancho">Material utilizado *<input name="material" id="act-material" data-requerido placeholder="Ej.: alcohol al 70%, detergente enzimático, hipoclorito, paños descartables"></label>
     </div>
     <div class="grilla campo-tipo" data-para="envio_leche recepcion_leche">
-      <label class="ancho"><span class="solo-envio">Institución o lugar de destino *</span><span class="solo-recepcion">Institución o lugar de origen *</span>
-        <input name="lugar" id="act-lugar-leche" data-requerido placeholder="Ej.: Hospital Materno Infantil, Neonatología del Hospital Regional, centro recolector"></label>
-      <label>Cantidad (ml) *<input name="cantidad_ml" id="act-ml" type="number" min="1" step="any" inputmode="decimal" data-requerido placeholder="Ej.: 1500"></label>
+      <label class="ancho"><span class="solo-envio">Institución que pasteuriza (a la que se envía) *</span><span class="solo-recepcion">Institución que devuelve la leche pasteurizada *</span>
+        <input name="lugar" id="act-lugar-leche" list="instituciones-leche" autocomplete="off" data-requerido placeholder="Ej.: Banco de Leche Humana del Hospital Regional"></label>
+      <datalist id="instituciones-leche">{% for i in instituciones %}<option value="{{ i }}">{% endfor %}</datalist>
+      <label><span class="solo-envio">Leche cruda enviada (ml) *</span><span class="solo-recepcion">Leche pasteurizada recibida (ml) *</span><input name="cantidad_ml" id="act-ml" type="number" min="1" step="any" inputmode="decimal" data-requerido placeholder="Ej.: 1500"></label>
       <label>Frascos<input name="frascos" id="act-frascos" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej.: 10"></label>
       <label>Lote<input name="lote" id="act-lote" placeholder="Ej.: L-2026-10-03"></label>
+      <p class="nota ancho solo-recepcion">Si la institución devuelve la leche con el mismo número de lote del envío, cárguelo igual para poder seguirlo.</p>
     </div>
     <div class="grilla campo-tipo" data-para="salida">
       <label class="ancho">Lugar o destino *<input name="lugar" id="act-lugar" data-requerido placeholder="Ej.: domicilio de la mamá (barrio), CAPS Villa Norte, escuela N° 12"></label>
@@ -74,7 +77,7 @@
         {% if a.tipo == 'educacion' %}Dirigida a <b>{{ a.destinatario_nombre }} {{ a.destinatario_apellido }}</b>
         {% elif a.tipo == 'limpieza' %}Material: {{ a.material }}
         {% elif a.tipo == 'salida' %}Destino: <b>{{ a.lugar }}</b>
-        {% elif a.tipo in ACTIVIDADES_LECHE %}{{ 'A' if a.tipo == 'envio_leche' else 'Desde' }} <b>{{ a.lugar }}</b>: <b>{{ a.cantidad_ml | ml }}</b>
+        {% elif a.tipo in ACTIVIDADES_LECHE %}{{ 'Enviada a' if a.tipo == 'envio_leche' else 'Devuelta por' }} <b>{{ a.lugar }}</b>: <b>{{ a.cantidad_ml | ml }}</b>
           {%- if a.frascos %} en {{ a.frascos }} frasco{{ 's' if a.frascos != 1 }}{% endif %}{% if a.lote %}<br><small>Lote {{ a.lote }}</small>{% endif %}{% endif %}
       </td>
       <td>{{ a.descripcion or '' }}</td>
