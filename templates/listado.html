@@ -48,6 +48,7 @@
       <td>
         <span class="etiqueta {{ m.situacion }}">{{ '🏥' if m.situacion == 'internada' else '🏠' }} {{ SITUACIONES[m.situacion] }}</span>
         {% if m.tipo_internacion %}<br><small>{{ INTERNACIONES[m.tipo_internacion] }}</small>{% endif %}
+        <br><span class="etiqueta modalidad-{{ m.modalidad or 'donante' }}">{{ '💧' if (m.modalidad or 'donante') == 'donante' else '🍼' }} {{ MODALIDADES[m.modalidad or 'donante'] }}</span>
         {% if m.con_riesgo and puede('completo') %}<span class="p-completo"><br><span class="etiqueta etiqueta-riesgo">⚠️ Riesgo</span></span>{% endif %}
         {% if m.fecha_alta %}<br><span class="etiqueta etiqueta-alta">🎓 Alta {{ m.fecha_alta | fecha }}</span>{% endif %}
       </td>

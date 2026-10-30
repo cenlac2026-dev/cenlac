@@ -55,6 +55,8 @@ MAX_CONSENTIMIENTO_MB = 15
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONSENTIMIENTO_MB * 1024 * 1024
 
 SITUACIONES = {"internada": "Internada", "domicilio": "En domicilio"}
+# Si la mamá dona su leche al banco o solo se extrae (por ejemplo, para su propio bebé).
+MODALIDADES = {"donante": "Donante", "extraccion": "Solo extracción"}
 INTERNACIONES = {"conjunta": "Internación conjunta en maternidad", "neonatologia": "Neonatología"}
 TIPOS_REGISTRO = {"extraccion": "Extracción", "estimulo": "Estímulo"}
 TIPOS_LECHE = {"calostro": "Calostro", "transicion": "De transición", "madura": "Madura"}
@@ -73,7 +75,11 @@ ACTIVIDADES = {
     "difusion": ("Difusión", "📣", "Medio y alcance, por ejemplo charla en sala de espera, redes sociales o radio local."),
     "carteleria": ("Cartelería", "🪧", "Carteles colocados o renovados, con su ubicación y contenido."),
     "salida": ("Salidas", "🚐", "Motivo y resultado de la salida, por ejemplo retiro de leche a domicilio, visita a una mamá, charla en un centro de salud o escuela."),
+    "envio_leche": ("Envío de leche humana", "📤", "Tipo de leche enviada (pasteurizada, cruda, calostro), estado de la cadena de frío y quién la recibió."),
+    "recepcion_leche": ("Recepción de leche humana", "📥", "Tipo de leche recibida, estado de los frascos y de la cadena de frío, y quién la entregó."),
 }
+# Envío y recepción de leche: se registra la institución o lugar, los ml, los frascos y el lote.
+ACTIVIDADES_LECHE = ("envio_leche", "recepcion_leche")
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS madres (
@@ -87,6 +93,7 @@ CREATE TABLE IF NOT EXISTS madres (
     barrio TEXT,
     localidad TEXT,
     situacion TEXT NOT NULL CHECK (situacion IN ('internada', 'domicilio')),
+    modalidad TEXT NOT NULL DEFAULT 'donante' CHECK (modalidad IN ('donante', 'extraccion')),
     tipo_internacion TEXT CHECK (tipo_internacion IN ('conjunta', 'neonatologia')),
     observaciones TEXT,
     factores_riesgo TEXT,
@@ -139,12 +146,15 @@ CREATE TABLE IF NOT EXISTS extracciones (
 CREATE TABLE IF NOT EXISTS actividades (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     fecha_hora TEXT NOT NULL,
-    tipo TEXT NOT NULL CHECK (tipo IN ('educacion', 'limpieza', 'difusion', 'carteleria', 'salida')),
+    tipo TEXT NOT NULL CHECK (tipo IN ('educacion', 'limpieza', 'difusion', 'carteleria', 'salida', 'envio_leche', 'recepcion_leche')),
     destinatario_nombre TEXT,
     destinatario_apellido TEXT,
     material TEXT,
     descripcion TEXT,
-    lugar TEXT
+    lugar TEXT,
+    cantidad_ml REAL,
+    frascos INTEGER,
+    lote TEXT
 );
 CREATE TABLE IF NOT EXISTS preparaciones (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -216,12 +226,19 @@ def init_db():
         db.executescript(ESQUEMA)
         db.executescript(usuarios.ESQUEMA)
         db.executescript(envivo.ESQUEMA_SQLITE)
-        # Bases anteriores: la tabla de actividades no admitía "salida" (restricción CHECK). Se rehace conservando los datos.
+        # Bases anteriores: la tabla de actividades no admitía "salida" ni envío/recepción de leche (restricción CHECK).
+        # Se rehace conservando los datos.
         sql_act = db.execute("SELECT sql FROM sqlite_master WHERE name = 'actividades'").fetchone()[0]
-        if "'salida'" not in sql_act:
-            columnas = [fila[1] for fila in db.execute("PRAGMA table_info(actividades)")]
+        if "'recepcion_leche'" not in sql_act:
+            anteriores = [(fila[1], fila[2]) for fila in db.execute("PRAGMA table_info(actividades)")]
+            columnas = [nombre for nombre, _ in anteriores]
             db.execute("ALTER TABLE actividades RENAME TO actividades_anterior")
             db.executescript(ESQUEMA)
+            # Columnas agregadas más tarde (por ejemplo usuario_id) que no están en ESQUEMA.
+            nuevas = {fila[1] for fila in db.execute("PRAGMA table_info(actividades)")}
+            for nombre, tipo_col in anteriores:
+                if nombre not in nuevas:
+                    db.execute(f"ALTER TABLE actividades ADD COLUMN {nombre} {tipo_col}")
             db.execute(f"INSERT INTO actividades ({', '.join(columnas)}) SELECT {', '.join(columnas)} FROM actividades_anterior")
             db.execute("DROP TABLE actividades_anterior")
         for tabla, columnas in COLUMNAS_NUEVAS.items():
@@ -229,6 +246,8 @@ def init_db():
             for col in columnas:
                 if col not in existentes:
                     db.execute(f"ALTER TABLE {tabla} ADD COLUMN {col} TEXT")
+        if "modalidad" not in {fila[1] for fila in db.execute("PRAGMA table_info(madres)")}:
+            db.execute("ALTER TABLE madres ADD COLUMN modalidad TEXT NOT NULL DEFAULT 'donante'")
         # Quién cargó cada registro (para las estadísticas por agente del cierre mensual).
         for tabla in TABLAS_CON_USUARIO:
             if "usuario_id" not in {fila[1] for fila in db.execute(f"PRAGMA table_info({tabla})")}:
@@ -292,7 +311,8 @@ def formato_ml(valor):
 
 @app.context_processor
 def opciones():
-    return {"SITUACIONES": SITUACIONES, "INTERNACIONES": INTERNACIONES,
+    return {"SITUACIONES": SITUACIONES, "INTERNACIONES": INTERNACIONES, "MODALIDADES": MODALIDADES,
+            "ACTIVIDADES_LECHE": ACTIVIDADES_LECHE,
             "TIPOS_REGISTRO": TIPOS_REGISTRO, "TIPOS_LECHE": TIPOS_LECHE, "ACTIVIDADES": ACTIVIDADES,
             "SERVICIOS": SERVICIOS, "SEXOS": crecimiento.SEXOS}
 
@@ -312,6 +332,7 @@ def leer_formulario(form):
         "barrio": texto("barrio"),
         "localidad": texto("localidad"),
         "situacion": texto("situacion"),
+        "modalidad": texto("modalidad"),
         "tipo_internacion": texto("tipo_internacion") or None,
         "observaciones": texto("observaciones"),
         "factores_riesgo": texto("factores_riesgo"),
@@ -320,6 +341,8 @@ def leer_formulario(form):
     for campo, etiqueta in (("apellido", "el apellido"), ("nombre", "el nombre"), ("dni", "el DNI")):
         if not madre[campo]:
             errores.append(f"Falta {etiqueta} de la madre.")
+    if madre["modalidad"] not in MODALIDADES:
+        errores.append("Indique si la madre es donante o solo realiza extracción.")
     if madre["situacion"] not in SITUACIONES:
         errores.append("Indique si la madre está internada o en domicilio.")
     if madre["situacion"] == "internada":
@@ -460,6 +483,8 @@ VISTAS = {
     "todas": "Todas",
     "internada": "Internadas",
     "domicilio": "En domicilio",
+    "donante": "Donantes",
+    "extraccion": "Solo extracción",
     "riesgo": "Con patologías o factores de riesgo",
 }
 
@@ -494,6 +519,9 @@ def listado():
         sql += " AND (m.fecha_alta IS NULL OR m.fecha_alta = '')"
     if ver in SITUACIONES:
         sql += " AND m.situacion = ?"
+        params.append(ver)
+    elif ver in MODALIDADES:
+        sql += " AND m.modalidad = ?"
         params.append(ver)
     elif ver == "riesgo":
         sql += " AND " + SQL_RIESGO
@@ -928,20 +956,41 @@ def actividades():
         lugar = texto("lugar")
         if tipo == "salida" and not lugar:
             errores.append("En salidas, indique el lugar o destino.")
+        cantidad_ml = frascos = None
+        if tipo in ACTIVIDADES_LECHE:
+            if not lugar:
+                errores.append("Indique la institución o el lugar " + ("al que se envió la leche." if tipo == "envio_leche" else "del que se recibió la leche."))
+            try:
+                cantidad_ml = float(texto("cantidad_ml").replace(",", "."))
+                if cantidad_ml <= 0:
+                    raise ValueError
+            except ValueError:
+                errores.append("Indique la cantidad de leche en ml (un número mayor que cero).")
+            if texto("frascos"):
+                if texto("frascos").isdigit():
+                    frascos = int(texto("frascos"))
+                else:
+                    errores.append("La cantidad de frascos debe ser un número entero.")
         if errores:
             for e in errores:
                 flash(e, "error")
         else:
             db.execute(
                 "INSERT INTO actividades (fecha_hora, tipo, destinatario_nombre, destinatario_apellido, material, "
-                "descripcion, lugar, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "descripcion, lugar, cantidad_ml, frascos, lote, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (fecha_hora, tipo,
                  nombre if tipo == "educacion" else None, apellido if tipo == "educacion" else None,
-                 material if tipo == "limpieza" else None, texto("descripcion"), lugar if tipo == "salida" else None,
+                 material if tipo == "limpieza" else None, texto("descripcion"),
+                 lugar if tipo == "salida" or tipo in ACTIVIDADES_LECHE else None,
+                 cantidad_ml, frascos, (texto("lote") or None) if tipo in ACTIVIDADES_LECHE else None,
                  usuario_id_actual()),
             )
             db.commit()
-            flash(f"Actividad de {ACTIVIDADES[tipo][0].lower()} registrada.")
+            if tipo in ACTIVIDADES_LECHE:
+                flash(f"{ACTIVIDADES[tipo][0]} registrado: {formato_ml(cantidad_ml)}." if tipo == "envio_leche"
+                      else f"{ACTIVIDADES[tipo][0]} registrada: {formato_ml(cantidad_ml)}.")
+            else:
+                flash(f"Actividad de {ACTIVIDADES[tipo][0].lower()} registrada.")
             return redirect(url_for("actividades"))
         return redirect(url_for("actividades", tipo=tipo))
 
@@ -952,9 +1001,13 @@ def actividades():
         params.append(filtro)
     lista = db.execute(sql + " ORDER BY fecha_hora DESC, id DESC LIMIT 200", params).fetchall()
     conteo = dict(db.execute("SELECT tipo, COUNT(*) FROM actividades GROUP BY tipo").fetchall())
+    mes = datetime.now().strftime("%Y-%m")
+    leche_mes = dict(db.execute("SELECT tipo, COALESCE(SUM(cantidad_ml), 0) FROM actividades "
+                                "WHERE tipo IN ('envio_leche', 'recepcion_leche') AND substr(fecha_hora, 1, 7) = ? GROUP BY tipo",
+                                (mes,)).fetchall())
     ahora = datetime.now()
     return render_template(
-        "actividades.html", actividades=lista, filtro=filtro, conteo=conteo,
+        "actividades.html", actividades=lista, filtro=filtro, conteo=conteo, leche_mes=leche_mes,
         tipo_elegido=request.args.get("tipo") or "educacion",
         hoy=ahora.strftime("%Y-%m-%d"), ahora=ahora.strftime("%H:%M"),
     )
@@ -1314,6 +1367,8 @@ def estadisticas():
         "total": contar("SELECT COUNT(*) FROM madres"),
         "internadas": contar("SELECT COUNT(*) FROM madres WHERE situacion = 'internada'"),
         "domicilio": contar("SELECT COUNT(*) FROM madres WHERE situacion = 'domicilio'"),
+        "donantes": contar("SELECT COUNT(*) FROM madres WHERE modalidad = 'donante'"),
+        "solo_extraccion": contar("SELECT COUNT(*) FROM madres WHERE modalidad = 'extraccion'"),
         "conjunta": contar("SELECT COUNT(*) FROM madres WHERE tipo_internacion = 'conjunta'"),
         "neonatologia": contar("SELECT COUNT(*) FROM madres WHERE tipo_internacion = 'neonatologia'"),
         "bebes": contar("SELECT COUNT(*) FROM bebes"),

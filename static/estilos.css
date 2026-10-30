@@ -137,6 +137,10 @@ main > h2 { margin: 26px 0 12px; color: var(--rosa-oscuro); }
 .etiqueta.act-difusion { background: #fde6d8; color: #9a5432; }
 .etiqueta.act-carteleria { background: #fff1c9; color: #8a6400; }
 .etiqueta.act-salida { background: #e8f6ee; color: #2f7a52; }
+.etiqueta.act-envio_leche { background: #e6f2fb; color: #2f6488; }
+.etiqueta.act-recepcion_leche { background: #fff4cf; color: #8a6414; }
+.etiqueta.modalidad-donante { background: #e6f2fb; color: #2f6488; }
+.etiqueta.modalidad-extraccion { background: #fff4cf; color: #8a6414; }
 .encabezado .filtros { margin: 0; }
 .encabezado h2 { margin: 0; }
 [hidden] { display: none !important; }

@@ -24,6 +24,16 @@
   </fieldset>
 
   <fieldset>
+    <legend>🍼 Tipo de registro *</legend>
+    <div class="opciones">
+      {% for k, v in MODALIDADES.items() %}
+        <label class="opcion"><input type="radio" name="modalidad" value="{{ k }}" {{ 'checked' if (madre.modalidad or 'donante') == k }} required> {{ '💧' if k == 'donante' else '🍼' }} {{ v }}</label>
+      {% endfor %}
+    </div>
+    <p class="nota">Donante: dona su leche al banco. Solo extracción: se extrae en el centro (por ejemplo, para su propio bebé) sin donar.</p>
+  </fieldset>
+
+  <fieldset>
     <legend>🏥 Situación de la madre *</legend>
     <div class="opciones">
       {% for k, v in SITUACIONES.items() %}

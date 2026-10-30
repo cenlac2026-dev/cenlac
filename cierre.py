@@ -158,6 +158,10 @@ def datos_cierre(db, anio, mes, tipos_leche, servicios, actividades):
         "educacion": db.execute(
             "SELECT fecha_hora, destinatario_nombre || ' ' || destinatario_apellido, descripcion FROM actividades "
             "WHERE tipo = 'educacion' AND substr(fecha_hora, 1, 7) = ? ORDER BY fecha_hora", (clave,)).fetchall(),
+        "leche_mov": db.execute(
+            "SELECT fecha_hora, tipo, lugar, cantidad_ml, frascos, lote FROM actividades "
+            "WHERE tipo IN ('envio_leche', 'recepcion_leche') AND substr(fecha_hora, 1, 7) = ? ORDER BY fecha_hora",
+            (clave,)).fetchall(),
         "salidas": db.execute(
             "SELECT fecha_hora, lugar, descripcion FROM actividades "
             "WHERE tipo = 'salida' AND substr(fecha_hora, 1, 7) = ? ORDER BY fecha_hora", (clave,)).fetchall(),
@@ -539,6 +543,20 @@ def generar_pdf(d):
         pdf.tabla(["Fecha", "Lugar o destino", "Motivo"],
                   [(datetime.strptime(f[:10], "%Y-%m-%d").strftime("%d/%m"), lg or "", (t or "").replace("Dato de simulación. ", ""))
                    for f, lg, t in d["salidas"]], (18, 55, 107))
+
+    if d.get("leche_mov"):
+        pdf.subtitulo("Envío y recepción de leche humana")
+        totales = {"envio_leche": 0, "recepcion_leche": 0}
+        for f in d["leche_mov"]:
+            totales[f[1]] += f[3] or 0
+        pdf.tabla(["Fecha", "Movimiento", "Institución o lugar", "Mililitros", "Frascos", "Lote"],
+                  [(datetime.strptime(f[:10], "%Y-%m-%d").strftime("%d/%m"), "Envío" if t == "envio_leche" else "Recepción",
+                    lg or "", num(ml, "ml"), num(fr) if fr else "", lt or "")
+                   for f, t, lg, ml, fr, lt in d["leche_mov"]],
+                  (16, 24, 66, 28, 18, 28), ("LEFT", "LEFT", "LEFT", "RIGHT", "RIGHT", "LEFT"))
+        pdf.tabla(["Total del mes", "Mililitros"],
+                  [("Enviados", num(totales["envio_leche"], "ml")), ("Recibidos", num(totales["recepcion_leche"], "ml"))],
+                  (130, 50), ("LEFT", "RIGHT"))
 
     pdf.seccion("7. Actividades por agente")
     ag = d["agentes"]

@@ -7,6 +7,8 @@
     {% for k, (nombre, icono, _) in ACTIVIDADES.items() %}
       <span><b>{{ conteo.get(k, 0) }}</b>{{ icono }} {{ nombre }}</span>
     {% endfor %}
+    <span><b>{{ leche_mes.get('envio_leche', 0) | ml }}</b>📤 enviados este mes</span>
+    <span><b>{{ leche_mes.get('recepcion_leche', 0) | ml }}</b>📥 recibidos este mes</span>
   </div>
 </div>
 
@@ -23,14 +25,21 @@
       <label>Hora<input type="time" name="hora" id="act-hora" value="{{ ahora }}" required></label>
     </div>
     <div class="grilla campo-tipo" data-para="educacion">
-      <label>Nombre de la persona a quien se dirige *<input name="destinatario_nombre" id="act-nombre"></label>
-      <label>Apellido *<input name="destinatario_apellido" id="act-apellido"></label>
+      <label>Nombre de la persona a quien se dirige *<input name="destinatario_nombre" id="act-nombre" data-requerido></label>
+      <label>Apellido *<input name="destinatario_apellido" id="act-apellido" data-requerido></label>
     </div>
     <div class="grilla campo-tipo" data-para="limpieza">
-      <label class="ancho">Material utilizado *<input name="material" id="act-material" placeholder="Ej.: alcohol al 70%, detergente enzimático, hipoclorito, paños descartables"></label>
+      <label class="ancho">Material utilizado *<input name="material" id="act-material" data-requerido placeholder="Ej.: alcohol al 70%, detergente enzimático, hipoclorito, paños descartables"></label>
+    </div>
+    <div class="grilla campo-tipo" data-para="envio_leche recepcion_leche">
+      <label class="ancho"><span class="solo-envio">Institución o lugar de destino *</span><span class="solo-recepcion">Institución o lugar de origen *</span>
+        <input name="lugar" id="act-lugar-leche" data-requerido placeholder="Ej.: Hospital Materno Infantil, Neonatología del Hospital Regional, centro recolector"></label>
+      <label>Cantidad (ml) *<input name="cantidad_ml" id="act-ml" type="number" min="1" step="any" inputmode="decimal" data-requerido placeholder="Ej.: 1500"></label>
+      <label>Frascos<input name="frascos" id="act-frascos" type="number" min="0" step="1" inputmode="numeric" placeholder="Ej.: 10"></label>
+      <label>Lote<input name="lote" id="act-lote" placeholder="Ej.: L-2026-10-03"></label>
     </div>
     <div class="grilla campo-tipo" data-para="salida">
-      <label class="ancho">Lugar o destino *<input name="lugar" id="act-lugar" placeholder="Ej.: domicilio de la mamá (barrio), CAPS Villa Norte, escuela N° 12"></label>
+      <label class="ancho">Lugar o destino *<input name="lugar" id="act-lugar" data-requerido placeholder="Ej.: domicilio de la mamá (barrio), CAPS Villa Norte, escuela N° 12"></label>
     </div>
     <div class="grilla">
       <label class="ancho"><span id="act-desc-titulo">Descripción</span>
@@ -64,7 +73,9 @@
       <td>
         {% if a.tipo == 'educacion' %}Dirigida a <b>{{ a.destinatario_nombre }} {{ a.destinatario_apellido }}</b>
         {% elif a.tipo == 'limpieza' %}Material: {{ a.material }}
-        {% elif a.tipo == 'salida' %}Destino: <b>{{ a.lugar }}</b>{% endif %}
+        {% elif a.tipo == 'salida' %}Destino: <b>{{ a.lugar }}</b>
+        {% elif a.tipo in ACTIVIDADES_LECHE %}{{ 'A' if a.tipo == 'envio_leche' else 'Desde' }} <b>{{ a.lugar }}</b>: <b>{{ a.cantidad_ml | ml }}</b>
+          {%- if a.frascos %} en {{ a.frascos }} frasco{{ 's' if a.frascos != 1 }}{% endif %}{% if a.lote %}<br><small>Lote {{ a.lote }}</small>{% endif %}{% endif %}
       </td>
       <td>{{ a.descripcion or '' }}</td>
       <td class="num">
@@ -90,10 +101,13 @@
       const sel = form.querySelector('input[name="tipo"]:checked');
       const tipo = sel ? sel.value : '';
       form.querySelectorAll('.campo-tipo').forEach(b => {
-        const visible = b.dataset.para === tipo;
+        const visible = b.dataset.para.split(' ').includes(tipo);
         b.hidden = !visible;
-        b.querySelectorAll('input').forEach(i => i.required = visible);
+        // Los campos ocultos no se envían (el lugar existe en dos bloques).
+        b.querySelectorAll('input').forEach(i => { i.disabled = !visible; i.required = visible && i.hasAttribute('data-requerido'); });
       });
+      form.querySelectorAll('.solo-envio').forEach(e => e.hidden = tipo !== 'envio_leche');
+      form.querySelectorAll('.solo-recepcion').forEach(e => e.hidden = tipo !== 'recepcion_leche');
       titulo.textContent = sel ? 'Descripción de ' + sel.parentElement.textContent.trim().replace(/^\S+\s/, '').toLowerCase() : 'Descripción';
       desc.placeholder = sel ? sel.dataset.ayuda : '';
     }

@@ -67,7 +67,9 @@
   </div>
 </section>
 <div class="cifras">
-  <div class="cifra"><span>{{ d.total }}</span>🤱 Madres donantes</div>
+  <div class="cifra"><span>{{ d.total }}</span>🤱 Madres registradas</div>
+  <div class="cifra"><span>{{ d.donantes }}</span>💧 Donantes ({{ porc(d.donantes, d.total) }})</div>
+  <div class="cifra"><span>{{ d.solo_extraccion }}</span>🍼 Solo extracción ({{ porc(d.solo_extraccion, d.total) }})</div>
   <div class="cifra"><span>{{ d.bebes }}</span>👶 Bebés</div>
   <div class="cifra"><span>{{ d.internadas }}</span>Internadas ({{ porc(d.internadas, d.total) }})</div>
   <div class="cifra"><span>{{ d.domicilio }}</span>En domicilio ({{ porc(d.domicilio, d.total) }})</div>

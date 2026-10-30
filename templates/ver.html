@@ -21,9 +21,10 @@
     <dt class="p-completo">Dirección</dt><dd class="p-completo">{{ madre.direccion }}</dd>{% endif %}
     <dt>Barrio</dt><dd>{{ madre.barrio }}</dd>
     <dt>Localidad</dt><dd>{{ madre.localidad }}</dd>
+    <dt>Tipo de registro</dt><dd>{{ '💧' if (madre.modalidad or 'donante') == 'donante' else '🍼' }} {{ MODALIDADES[madre.modalidad or 'donante'] }}</dd>
     <dt>Situación</dt><dd>{{ SITUACIONES[madre.situacion] }}{% if madre.tipo_internacion %}: {{ INTERNACIONES[madre.tipo_internacion] }}{% endif %}</dd>
     <dt>Fecha de registro</dt><dd>{{ madre.fecha_registro | fecha }}</dd>
-    <dt>Leche donada</dt><dd><b>{{ ext.total_ml | ml }}</b> en {{ ext.cantidad }} registro(s)</dd>
+    <dt>{{ 'Leche donada' if (madre.modalidad or 'donante') == 'donante' else 'Leche extraída' }}</dt><dd><b>{{ ext.total_ml | ml }}</b> en {{ ext.cantidad }} registro(s)</dd>
     {% if madre.fecha_alta %}<dt>Alta</dt><dd>🎓 {{ madre.fecha_alta | fecha }}</dd>{% endif %}
     {% if puede('completo') %}<dt class="p-completo">Factores de riesgo</dt><dd class="p-completo">{% if madre.factores_riesgo %}<span class="salud riesgo">⚠️ {{ madre.factores_riesgo }}</span>{% else %}<span class="nota">Sin datos</span>{% endif %}</dd>
     <dt class="p-completo">Patologías crónicas</dt><dd class="p-completo">{% if madre.patologias_cronicas %}<span class="salud cronica">🩺 {{ madre.patologias_cronicas }}</span>{% else %}<span class="nota">Sin datos</span>{% endif %}</dd>
