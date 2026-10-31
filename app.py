@@ -17,6 +17,7 @@ import basedatos
 import cierre
 import crecimiento
 import envivo
+import mensajes
 import usuarios
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -184,6 +185,7 @@ def get_db():
 
 usuarios.iniciar(app, get_db)
 envivo.iniciar(app, get_db)
+mensajes.iniciar(app, get_db, lambda: usuario_id_actual())
 
 
 @app.errorhandler(403)
@@ -227,6 +229,7 @@ def init_db():
         db.executescript(ESQUEMA)
         db.executescript(usuarios.ESQUEMA)
         db.executescript(envivo.ESQUEMA_SQLITE)
+        db.executescript(mensajes.ESQUEMA_SQLITE)
         # Bases anteriores: la tabla de actividades no admitía "salida" ni envío/recepción de leche (restricción CHECK).
         # Se rehace conservando los datos.
         sql_act = db.execute("SELECT sql FROM sqlite_master WHERE name = 'actividades'").fetchone()[0]
@@ -529,7 +532,8 @@ def listado():
     sql += " ORDER BY m.fecha_registro DESC, m.id DESC"
     db = get_db()
     madres = db.execute(sql, params).fetchall()
-    return render_template("listado.html", madres=madres, q=q, ver=ver, vistas=VISTAS,
+    return render_template("listado.html", madres=madres, mensajes=mensajes.vigentes(db),
+                           max_mensaje=mensajes.MAX_CARACTERES, q=q, ver=ver, vistas=VISTAS,
                            inicio_mes=inicio_mes, resumen=resumen_inicio(db))
 
 

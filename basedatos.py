@@ -36,7 +36,7 @@ else:
     ErrorIntegridad = (sqlite3.IntegrityError,)
 
 # Tablas con columna id autoincremental: al insertar se devuelve el id nuevo.
-_CON_ID = {"madres", "bebes", "controles_bebe", "padres", "extracciones", "actividades", "preparaciones", "usuarios", "novedades"}
+_CON_ID = {"madres", "bebes", "controles_bebe", "padres", "extracciones", "actividades", "preparaciones", "usuarios", "novedades", "mensajes"}
 
 
 class Fila(tuple):

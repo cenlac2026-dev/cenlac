@@ -468,3 +468,22 @@ tr.fila-extraccion td:first-child { box-shadow: inset 4px 0 0 #e8c66a; }
 .tabla-alta { max-height: 460px; overflow-y: auto; }
 .tabla-alta thead th { position: sticky; top: 0; z-index: 1; }
 .lista-modalidad th, .lista-modalidad td { padding: 8px 9px; font-size: .88rem; }
+
+/* Mensajes del equipo (arriba del listado de madres) */
+.mensajes-equipo { border-top: 4px solid var(--rosa); }
+.mensajes-cab h2 { margin: 0; display: flex; align-items: center; gap: 8px; }
+.mensajes-cab .nota { margin: 4px 0 12px; }
+.mensajes-equipo .contador { background: var(--rosa); color: #fff; border-radius: 999px; font-size: .8rem; padding: 1px 9px; }
+.mensaje-nuevo textarea { width: 100%; resize: vertical; }
+.mensaje-acciones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.mensaje-acciones .contador-caracteres { margin: 0 auto 0 0; }
+.opcion-fijar { margin: 0; }
+.lista-mensajes { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; max-height: 420px; overflow-y: auto; }
+.mensaje { background: var(--crema); border: 1px solid var(--borde); border-left: 4px solid var(--borde); border-radius: 14px; padding: 10px 14px; }
+.mensaje.fijado { background: #fff8e1; border-left-color: #e6b93c; }
+.mensaje-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mensaje-cab .nota { margin: 0; font-size: .8rem; }
+.mensaje-botones { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
+.mensaje-botones button.chico { padding: 4px 12px; font-size: .8rem; background: var(--rosa-claro); color: var(--rosa-oscuro); box-shadow: none; }
+.mensaje p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mensajes-equipo .lista-mensajes { padding: 0; }

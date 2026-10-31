@@ -41,6 +41,9 @@ ACCIONES = {
     "eliminar_preparacion": ("quitó una preparación", "🧪", "preparaciones"),
     "agregar_control": ("cargó un control de crecimiento de {bebe}", "📈", "crecimiento_bebe"),
     "eliminar_control": ("quitó un control de crecimiento", "📈", None),
+    "mensajes.publicar": ("dejó un mensaje para el equipo", "💬", "listado"),
+    "mensajes.fijar": ("fijó o desfijó un mensaje del equipo", "📌", "listado"),
+    "mensajes.eliminar": ("borró un mensaje del equipo", "💬", "listado"),
     "usuarios.guardar": ("creó un usuario", "👥", None),
     "usuarios.cambiar": ("modificó un usuario", "👥", None),
 }
@@ -120,6 +123,8 @@ def _anotar(respuesta):
         enlace = url_for("ver", madre_id=madre_id)
     elif destino == "crecimiento_bebe" and args.get("bebe_id"):
         enlace = url_for("crecimiento_bebe", bebe_id=args["bebe_id"])
+    elif destino == "listado":
+        enlace = url_for("listado") + "#mensajes"
     elif destino in ("actividades", "preparaciones"):
         enlace = url_for(destino)
     db.execute("INSERT INTO novedades (momento, usuario_id, accion, enlace) VALUES (?, ?, ?, ?)",

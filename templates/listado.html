@@ -23,6 +23,50 @@
   {% if puede('editar') %}<a class="boton p-editar" href="{{ url_for('nueva') }}">➕ Registrar madre</a>{% endif %}
 </section>
 
+<section class="tarjeta mensajes-equipo" id="mensajes">
+  <div class="mensajes-cab">
+    <h2>💬 Mensajes del equipo {% if mensajes %}<span class="contador">{{ mensajes | length }}</span>{% endif %}</h2>
+    <p class="nota">Avisos entre agentes, jefes y administración. 📌 Fijado: se ve 36 horas. Sin fijar: 18 horas. Después se borra solo. Cada mensaje cuenta como actividad de difusión.</p>
+  </div>
+  {% if puede('editar') %}
+  <form method="post" action="{{ url_for('mensajes.publicar') }}" class="mensaje-nuevo p-editar">
+    <textarea name="texto" rows="2" maxlength="{{ max_mensaje }}" required placeholder="Escribí un aviso para el equipo: turnos, faltantes, una mamá que viene mañana, una charla…" aria-label="Mensaje para el equipo"></textarea>
+    <div class="mensaje-acciones">
+      <label class="opcion opcion-fijar"><input type="checkbox" name="fijado" value="1"> 📌 Fijar 36 h</label>
+      <span class="nota contador-caracteres" data-max="{{ max_mensaje }}">0 / {{ max_mensaje }}</span>
+      <button type="submit">Publicar</button>
+    </div>
+  </form>
+  {% endif %}
+  {% if mensajes %}
+  <ul class="lista-mensajes">
+    {% for m in mensajes %}
+    <li class="mensaje{{ ' fijado' if m.fijado }}">
+      <div class="mensaje-cab">
+        <b>{{ '📌 ' if m.fijado }}{{ m.autor }}</b>{% if m.rol %} <span class="etiqueta rol-{{ m.rol }}">{{ ROLES[m.rol] }}</span>{% endif %}
+        <span class="nota">{{ m.creado.strftime('%d/%m %H:%M') }} · {{ m.resta }}</span>
+        {% if m.puede %}
+        <span class="mensaje-botones">
+          <form method="post" action="{{ url_for('mensajes.fijar', mensaje_id=m.id) }}" class="en-linea"><button type="submit" class="chico" title="{{ 'Desfijar: queda 18 h desde que se publicó' if m.fijado else 'Fijar: queda 36 h desde que se publicó' }}">{{ 'Desfijar' if m.fijado else '📌 Fijar' }}</button></form>
+          <form method="post" action="{{ url_for('mensajes.eliminar', mensaje_id=m.id) }}" class="en-linea" onsubmit="return confirm('¿Borrar este mensaje?');"><button type="submit" class="quitar" title="Borrar mensaje">✕</button></form>
+        </span>
+        {% endif %}
+      </div>
+      <p>{{ m.texto }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="vacio">No hay mensajes vigentes.</p>
+  {% endif %}
+</section>
+<script>
+  (function () {
+    const t = document.querySelector('.mensaje-nuevo textarea'), c = document.querySelector('.contador-caracteres');
+    if (t && c) t.addEventListener('input', () => { c.textContent = t.value.length + ' / ' + c.dataset.max; });
+  })();
+</script>
+
 <form class="filtros" method="get" data-inicio-mes="{{ inicio_mes }}">
   <input type="search" name="q" value="{{ q }}" placeholder="🔍 Buscar por apellido, nombre, {{ 'DNI, ' if puede('completo') }}barrio o localidad">
   <select name="ver" data-auto-enviar aria-label="Qué madres mostrar">
@@ -60,7 +104,7 @@
   </tbody>
 </table>
 </div>
-<p class="nota">{{ madres|length }} registro(s).</p>
+<p class="nota cuenta">{{ madres|length }} registro(s).</p>
 {% else %}
 <div class="vacio-grande">
   <div>🌙</div>
