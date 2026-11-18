@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Curva de {{ bebe.nombre }} {{ bebe.apellido_materno }}{% endblock %}
 {% block contenido %}
+{% from "_conjunto.html" import agentes_conjunto with context %}
 <div class="encabezado">
   <h1>📈 Curva de percentiles de {{ bebe.nombre }} {{ bebe.apellido_materno }}</h1>
   <a class="boton secundario" href="{{ url_for('ver', madre_id=madre.id) }}">← Ficha de {{ madre.nombre }} {{ madre.apellido }}</a>
@@ -29,6 +30,7 @@
     <label>Talla (cm)<input type="number" name="talla" min="25" max="75" step="0.1" placeholder="Opcional"></label>
     <label>Perímetro cefálico (cm)<input type="number" name="pc" min="18" max="50" step="0.1" placeholder="Opcional"></label>
     <label class="ancho-total">Observaciones<input name="observaciones" placeholder="Ej.: inicia succión, fototerapia, etc."></label>
+    <div class="ancho-total">{{ agentes_conjunto("ctrl") }}</div>
     <div><button type="submit">Guardar control</button></div>
   </form>
   <p class="nota">Se registra un control por día; si carga otro en la misma fecha, reemplaza al anterior.</p>

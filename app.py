@@ -224,6 +224,41 @@ def usuario_id_actual():
     return g.usuario["id"] if g.get("usuario") else None
 
 
+AGENTES_EXTRA = ("agente2_id", "agente3_id")
+
+
+def _nombre_normal(nombre):
+    return " ".join((nombre or "").split()).lower()
+
+
+def nombres_agentes():
+    """Nombres del equipo para elegir el segundo y tercer agente (sin quien está cargando)."""
+    return [u[0] for u in get_db().execute(
+        "SELECT nombre FROM usuarios WHERE activo = 1 AND rol != 'consulta' AND id != ? ORDER BY nombre",
+        (usuario_id_actual() or 0,)).fetchall()]
+
+
+def leer_agentes_extra(db, f):
+    """Tarea hecha por 1, 2 o 3 agentes: quien carga más los nombres escritos en agente2 y agente3.
+    Devuelve ([agente2_id, agente3_id], errores)."""
+    cantidad = f.get("agentes_cantidad") or "1"
+    cantidad = int(cantidad) if cantidad in ("1", "2", "3") else 1
+    activos = {_nombre_normal(u[1]): u[0] for u in db.execute("SELECT id, nombre FROM usuarios WHERE activo = 1").fetchall()}
+    ids, errores = [], []
+    for campo, orden in list(zip(("agente2", "agente3"), ("segundo", "tercer")))[:cantidad - 1]:
+        escrito = (f.get(campo) or "").strip()
+        uid = activos.get(_nombre_normal(escrito))
+        if not escrito:
+            errores.append(f"Escriba el nombre del {orden} agente que participó.")
+        elif uid is None:
+            errores.append(f"No hay un usuario activo llamado «{escrito}». Elija el nombre de la lista.")
+        elif uid == usuario_id_actual() or uid in ids:
+            errores.append("Cada agente que participó tiene que ser una persona distinta.")
+        else:
+            ids.append(uid)
+    return ids + [None] * (len(AGENTES_EXTRA) - len(ids)), errores
+
+
 def init_db():
     if basedatos.ES_POSTGRES:
         basedatos.crear_tablas_postgres()
@@ -259,6 +294,12 @@ def init_db():
         for tabla in TABLAS_CON_USUARIO:
             if "usuario_id" not in {fila[1] for fila in db.execute(f"PRAGMA table_info({tabla})")}:
                 db.execute(f"ALTER TABLE {tabla} ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)")
+        # Tareas hechas en conjunto: hasta dos agentes más además de quien carga (cuentan para cada uno).
+        for tabla in TABLAS_CON_USUARIO:
+            existentes = {fila[1] for fila in db.execute(f"PRAGMA table_info({tabla})")}
+            for col in AGENTES_EXTRA:
+                if col not in existentes:
+                    db.execute(f"ALTER TABLE {tabla} ADD COLUMN {col} INTEGER REFERENCES usuarios(id)")
 
 
 @app.template_filter("fecha")
@@ -321,7 +362,7 @@ def opciones():
     return {"SITUACIONES": SITUACIONES, "INTERNACIONES": INTERNACIONES, "MODALIDADES": MODALIDADES,
             "ACTIVIDADES_LECHE": ACTIVIDADES_LECHE,
             "TIPOS_REGISTRO": TIPOS_REGISTRO, "TIPOS_LECHE": TIPOS_LECHE, "ACTIVIDADES": ACTIVIDADES,
-            "SERVICIOS": SERVICIOS, "SEXOS": crecimiento.SEXOS}
+            "SERVICIOS": SERVICIOS, "SEXOS": crecimiento.SEXOS, "nombres_agentes": nombres_agentes}
 
 
 def leer_formulario(form):
@@ -415,12 +456,13 @@ def leer_formulario(form):
     return madre, padre, bebes, errores
 
 
-def guardar(db, madre_id, madre, padre, bebes):
+def guardar(db, madre_id, madre, padre, bebes, agentes_extra=(None, None)):
     columnas = list(madre.keys())
     if madre_id is None:
         madre["fecha_registro"] = date.today().isoformat()
         madre["usuario_id"] = usuario_id_actual()
-        columnas += ["fecha_registro", "usuario_id"]
+        madre.update(zip(AGENTES_EXTRA, agentes_extra))
+        columnas += ["fecha_registro", "usuario_id", *AGENTES_EXTRA]
         cur = db.execute(
             f"INSERT INTO madres ({', '.join(columnas)}) VALUES ({', '.join('?' * len(columnas))})",
             [madre[c] for c in columnas],
@@ -739,12 +781,14 @@ def eliminar_consentimiento(madre_id):
 def nueva():
     if request.method == "POST":
         madre, padre, bebes, errores = leer_formulario(request.form)
+        extra, errores_extra = leer_agentes_extra(get_db(), request.form)
+        errores += errores_extra
         archivo = request.files.get("consentimiento")
         if validar_consentimiento(archivo):
             errores.append(validar_consentimiento(archivo))
         if not errores:
             try:
-                madre_id = guardar(get_db(), None, madre, padre, bebes)
+                madre_id = guardar(get_db(), None, madre, padre, bebes, extra)
             except basedatos.ErrorIntegridad:
                 deshacer(get_db())
                 errores.append("Ya existe una madre registrada con ese DNI.")
@@ -799,16 +843,18 @@ def nueva_extraccion(madre_id):
         errores.append("La cantidad debe ser un número de mililitros (0 a 2000).")
     if tipo == "extraccion" and not cantidad:
         errores.append("Indique la cantidad extraída en mililitros.")
+    extra, errores_extra = leer_agentes_extra(get_db(), f)
+    errores += errores_extra
     if errores:
         for e in errores:
             flash(e, "error")
     else:
         db = get_db()
         cur = db.execute(
-            "INSERT INTO extracciones (madre_id, fecha_hora, tipo, cantidad_ml, tipo_leche, caracteristicas, usuario_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO extracciones (madre_id, fecha_hora, tipo, cantidad_ml, tipo_leche, caracteristicas, usuario_id, "
+            "agente2_id, agente3_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (madre_id, fecha_hora, tipo, cantidad_ml, tipo_leche, (f.get("caracteristicas") or "").strip(),
-             usuario_id_actual()),
+             usuario_id_actual(), *extra),
         )
         db.commit()
         flash(f"{TIPOS_REGISTRO[tipo]} registrada. Ya está lista su etiqueta con código QR.")
@@ -975,6 +1021,8 @@ def actividades():
         lugar = texto("lugar")
         if tipo == "salida" and not lugar:
             errores.append("En salidas, indique el lugar o destino.")
+        extra, errores_extra = leer_agentes_extra(db, f)
+        errores += errores_extra
         cantidad_ml = frascos = None
         if tipo in ACTIVIDADES_LECHE:
             if not lugar:
@@ -996,13 +1044,13 @@ def actividades():
         else:
             db.execute(
                 "INSERT INTO actividades (fecha_hora, tipo, destinatario_nombre, destinatario_apellido, material, "
-                "descripcion, lugar, cantidad_ml, frascos, lote, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "descripcion, lugar, cantidad_ml, frascos, lote, usuario_id, agente2_id, agente3_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (fecha_hora, tipo,
                  nombre if tipo == "educacion" else None, apellido if tipo == "educacion" else None,
                  material if tipo == "limpieza" else None, texto("descripcion"),
                  lugar if tipo == "salida" or tipo in ACTIVIDADES_LECHE else None,
                  cantidad_ml, frascos, (texto("lote") or None) if tipo in ACTIVIDADES_LECHE else None,
-                 usuario_id_actual()),
+                 usuario_id_actual(), *extra),
             )
             db.commit()
             if tipo in ACTIVIDADES_LECHE:
@@ -1014,11 +1062,14 @@ def actividades():
         return redirect(url_for("actividades", tipo=tipo))
 
     filtro = request.args.get("filtro") or ""
-    sql, params = "SELECT * FROM actividades", []
+    sql = ("SELECT a.*, u1.nombre AS cargo_nombre, u2.nombre AS agente2_nombre, u3.nombre AS agente3_nombre "
+           "FROM actividades a LEFT JOIN usuarios u1 ON u1.id = a.usuario_id "
+           "LEFT JOIN usuarios u2 ON u2.id = a.agente2_id LEFT JOIN usuarios u3 ON u3.id = a.agente3_id")
+    params = []
     if filtro in ACTIVIDADES:
-        sql += " WHERE tipo = ?"
+        sql += " WHERE a.tipo = ?"
         params.append(filtro)
-    lista = db.execute(sql + " ORDER BY fecha_hora DESC, id DESC LIMIT 200", params).fetchall()
+    lista = db.execute(sql + " ORDER BY a.fecha_hora DESC, a.id DESC LIMIT 200", params).fetchall()
     conteo = dict(db.execute("SELECT tipo, COUNT(*) FROM actividades GROUP BY tipo").fetchall())
     mes = datetime.now().strftime("%Y-%m")
     leche_mes = dict(db.execute("SELECT tipo, COALESCE(SUM(cantidad_ml), 0) FROM actividades "
@@ -1084,18 +1135,20 @@ def preparaciones():
         servicio = texto("servicio")
         if servicio not in SERVICIOS:
             errores.append("Indique si el bebé está internado en maternidad o en neonatología.")
+        extra, errores_extra = leer_agentes_extra(db, f)
+        errores += errores_extra
         if errores:
             for e in errores:
                 flash(e, "error")
             return redirect(url_for("preparaciones"))
         db.execute(
             "INSERT INTO preparaciones (fecha, hora_entrega, tipo_preparacion, dosis_ml, frecuencia, cantidad_dosis, "
-            "bebe_nombre, bebe_apellido, servicio, observaciones, fortificador, concentracion, usuario_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "bebe_nombre, bebe_apellido, servicio, observaciones, fortificador, concentracion, usuario_id, "
+            "agente2_id, agente3_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (fecha, hora, texto("tipo_preparacion"), dosis, texto("frecuencia"), int(cantidad),
              texto("bebe_nombre"), texto("bebe_apellido"), servicio, texto("observaciones"),
              texto("fortificador") if fortificada else None, texto("concentracion") if fortificada else None,
-             usuario_id_actual()),
+             usuario_id_actual(), *extra),
         )
         db.commit()
         flash("Preparación registrada.")
@@ -1329,17 +1382,21 @@ def agregar_control(bebe_id):
             errores.append(f"{mensaje} (entre {minimo} y {maximo}).")
     if not errores and not any(valores.values()):
         errores.append("Cargue al menos el peso, la talla o el perímetro cefálico.")
+    extra, errores_extra = leer_agentes_extra(db, f)
+    errores += errores_extra
     if errores:
         for e in errores:
             flash(e, "error")
     else:
         # Un control por día: si ya había uno en esa fecha, se reemplaza.
         db.execute(
-            "INSERT INTO controles_bebe (bebe_id, fecha, peso, talla, pc, observaciones, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "INSERT INTO controles_bebe (bebe_id, fecha, peso, talla, pc, observaciones, usuario_id, agente2_id, agente3_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT (bebe_id, fecha) DO UPDATE SET peso = excluded.peso, talla = excluded.talla, "
-            "pc = excluded.pc, observaciones = excluded.observaciones, usuario_id = excluded.usuario_id",
+            "pc = excluded.pc, observaciones = excluded.observaciones, usuario_id = excluded.usuario_id, "
+            "agente2_id = excluded.agente2_id, agente3_id = excluded.agente3_id",
             (bebe_id, fecha, valores["peso"], valores["talla"], valores["pc"], (f.get("observaciones") or "").strip(),
-             usuario_id_actual()),
+             usuario_id_actual(), *extra),
         )
         db.commit()
         flash("Control registrado.")
@@ -1504,8 +1561,11 @@ def estadisticas():
         listas.append({"clave": clave, "titulo": titulo, "filas": filas,
                        "activas": sum(1 for f in filas if not f["fecha_alta"]),
                        "ml_mes": sum(f["ml_mes"] or 0 for f in filas), "total_ml": sum(f["total_ml"] or 0 for f in filas)})
+    hoy = date.today()
+    agentes = {"mes": cierre.por_agente(db, hoy.strftime("%Y-%m")), "anio": cierre.por_agente(db, str(hoy.year)),
+               "nombre_mes": cierre.nombre_mes(hoy.year, hoy.month), "anio_actual": hoy.year}
     return render_template("estadisticas.html", d=datos, proy=datos_proyeccion(db), riesgo=riesgo,
-                           por_modalidad=graficos_modalidad(db), listas=listas)
+                           por_modalidad=graficos_modalidad(db), listas=listas, agentes=agentes)
 
 
 init_db()

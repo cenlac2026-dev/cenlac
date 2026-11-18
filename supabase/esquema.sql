@@ -165,6 +165,17 @@ CREATE INDEX IF NOT EXISTS idx_madres_usuario ON madres (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_controles_usuario ON controles_bebe (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_extracciones_usuario ON extracciones (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_actividades_usuario ON actividades (usuario_id);
+-- Actualización 18/11: tareas hechas por 2 o 3 agentes (cuentan para cada uno en las estadísticas).
+ALTER TABLE madres ADD COLUMN IF NOT EXISTS agente2_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE madres ADD COLUMN IF NOT EXISTS agente3_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE extracciones ADD COLUMN IF NOT EXISTS agente2_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE extracciones ADD COLUMN IF NOT EXISTS agente3_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE preparaciones ADD COLUMN IF NOT EXISTS agente2_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE preparaciones ADD COLUMN IF NOT EXISTS agente3_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE actividades ADD COLUMN IF NOT EXISTS agente2_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE actividades ADD COLUMN IF NOT EXISTS agente3_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE controles_bebe ADD COLUMN IF NOT EXISTS agente2_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+ALTER TABLE controles_bebe ADD COLUMN IF NOT EXISTS agente3_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_preparaciones_usuario ON preparaciones (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_novedades_usuario ON novedades (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_mensajes_usuario ON mensajes (usuario_id);

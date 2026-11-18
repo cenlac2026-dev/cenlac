@@ -2,6 +2,7 @@
 {% from "_modalidad.html" import sello %}
 {% block titulo %}{{ madre.apellido }}, {{ madre.nombre }}{% endblock %}
 {% block contenido %}
+{% from "_conjunto.html" import agentes_conjunto with context %}
 <div class="encabezado">
   <h1>{{ madre.apellido }}, {{ madre.nombre }} {{ sello(madre.modalidad) }}</h1>
   <div>
@@ -173,6 +174,7 @@
     <div class="grilla">
       <label class="ancho">Características de la leche<input name="caracteristicas" id="ext-caract" placeholder="Color, aspecto, olor, presencia de sangre, etc."></label>
     </div>
+    {{ agentes_conjunto("ext") }}
     <div class="acciones"><button type="submit">➕ Agregar registro</button></div>
   </form>{% endif %}
 

@@ -25,22 +25,37 @@ TAREAS_AGENTE = [
     ("actividades", "Otras actividades", "actividades", "fecha_hora", (108, 191, 143)),
     ("controles", "Controles de bebés", "controles_bebe", "fecha", (242, 155, 181)),
 ]
+AGENTES_EXTRA = ("agente2_id", "agente3_id")  # tareas hechas por 2 o 3 agentes
 ROLES_AGENTE = {"admin": "Administrador", "jefe": "Jefe", "agente": "Agente", "consulta": "Consulta"}
 
 
 def por_agente(db, clave):
-    """Registros cargados por cada usuario en el mes, por tipo de tarea, con su porcentaje del total."""
-    union = " UNION ALL ".join(
-        f"SELECT usuario_id, '{k}' FROM {tabla} WHERE substr({col}, 1, 7) = ?" for k, _, tabla, col, _ in TAREAS_AGENTE)
+    """Registros cargados por cada usuario en el período (clave "AAAA-MM" para un mes o "AAAA" para el año),
+    por tipo de tarea, con su porcentaje del total. Aparecen todos los usuarios activos del equipo,
+    aunque no hayan cargado nada en el período (con 0), para que la lista de agentes esté completa."""
+    # Quien cargó cada registro y, si la tarea se hizo en conjunto, el segundo y tercer agente: cuenta para cada uno.
+    consultas = []
+    for k, _, tabla, col, _ in TAREAS_AGENTE:
+        consultas.append(f"SELECT usuario_id, '{k}' FROM {tabla} WHERE substr({col}, 1, {len(clave)}) = ?")
+        for extra in AGENTES_EXTRA:
+            consultas.append(f"SELECT {extra}, '{k}' FROM {tabla} WHERE {extra} IS NOT NULL AND substr({col}, 1, {len(clave)}) = ?")
+    union = " UNION ALL ".join(consultas)
+    vacio = lambda: {k: 0 for k, *_ in TAREAS_AGENTE}
     conteo = {}
-    for uid, tarea in db.execute(union, [clave] * len(TAREAS_AGENTE)):
-        conteo.setdefault(uid, {k: 0 for k, *_ in TAREAS_AGENTE})[tarea] += 1
-    usuarios = {u[0]: u for u in db.execute("SELECT id, nombre, rol FROM usuarios")}
+    for uid, tarea in db.execute(union, [clave] * len(consultas)):
+        conteo.setdefault(uid, vacio())[tarea] += 1
+    usuarios = {u[0]: u for u in db.execute("SELECT id, nombre, rol, activo FROM usuarios")}
+    # Usuarios activos que cargan datos (no los de solo consulta) aunque no tengan registros en el período.
+    for uid, u in usuarios.items():
+        if u[3] and u[2] != "consulta":
+            conteo.setdefault(uid, vacio())
     total = sum(sum(c.values()) for c in conteo.values())
     filas = []
     for uid, cant in conteo.items():
         u = usuarios.get(uid)
         n = sum(cant.values())
+        if not u and not n:
+            continue
         filas.append({
             "nombre": u[1] if u else "Sin usuario (registros anteriores)",
             "rol": ROLES_AGENTE.get(u[2], u[2]) if u else "",
@@ -49,8 +64,8 @@ def por_agente(db, clave):
             "pct_tareas": {k: round(100 * v / n, 1) if n else 0 for k, v in cant.items()},
         })
     # Primero quienes más cargaron; los registros sin usuario al final.
-    filas.sort(key=lambda f: (f["rol"] == "", -f["total"], f["nombre"]))
-    return {"filas": filas, "total": total,
+    filas.sort(key=lambda f: (f["rol"] == "", -f["total"], f["nombre"].lower()))
+    return {"filas": filas, "total": total, "sin_registros": sum(1 for f in filas if f["rol"] and not f["total"]),
             "tareas": [(k, nombre, "#%02x%02x%02x" % color) for k, nombre, _, _, color in TAREAS_AGENTE]}
 
 
@@ -419,7 +434,7 @@ class InformePDF(FPDF):
         ancho = self.w - self.l_margin - self.r_margin
         x_barra, ancho_etq = self.l_margin + 52, 52
         ancho_barra = ancho - ancho_etq - 24
-        maximo = max(f["pct"] for f in agentes["filas"])
+        maximo = max(f["pct"] for f in agentes["filas"]) or 1
         # Leyenda
         self.set_font("Helvetica", "", 7)
         x = self.l_margin
@@ -671,7 +686,9 @@ def generar_pdf(d):
     pdf.set_font("Helvetica", "", 8.5)
     pdf.set_text_color(*SUAVE)
     pdf.multi_cell(0, 4.2, f"Porcentaje del total de registros del mes ({num(ag['total'])}) que cargó cada usuario: madres registradas, "
-                           "extracciones y estímulos, preparaciones, otras actividades y controles de bebés.",
+                           "extracciones y estímulos, preparaciones, otras actividades y controles de bebés. "
+                           "Las tareas hechas por 2 o 3 agentes cuentan para cada uno. "
+                           "Figuran todos los usuarios activos; con 0 % quienes no cargaron registros en el mes.",
                    new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(*TEXTO)
     pdf.ln(2)

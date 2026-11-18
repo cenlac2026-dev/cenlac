@@ -1,0 +1,34 @@
+{# Selector "1, 2 o 3 agentes" para cualquier tarea. La tarea cuenta para cada agente en Estadísticas y Cierre. #}
+{% macro agentes_conjunto(sufijo) %}
+<div class="conjunto" id="conjunto-{{ sufijo }}">
+  <div class="opciones">
+    <span>👥 Agentes que la realizaron:</span>
+    <label class="opcion"><input type="radio" name="agentes_cantidad" value="1" checked> 1 (solo yo)</label>
+    <label class="opcion"><input type="radio" name="agentes_cantidad" value="2"> 2</label>
+    <label class="opcion"><input type="radio" name="agentes_cantidad" value="3"> 3</label>
+  </div>
+  <div class="grilla conjunto-nombres" hidden>
+    <label data-n="2">Segundo agente *<input name="agente2" list="agentes-{{ sufijo }}" autocomplete="off" placeholder="Escriba y elija de la lista"></label>
+    <label data-n="3">Tercer agente *<input name="agente3" list="agentes-{{ sufijo }}" autocomplete="off" placeholder="Escriba y elija de la lista"></label>
+    <p class="nota ancho">Se suma a las estadísticas de cada agente.</p>
+  </div>
+  <datalist id="agentes-{{ sufijo }}">{% for nombre in nombres_agentes() %}<option value="{{ nombre }}">{% endfor %}</datalist>
+</div>
+<script>
+  (function () {
+    const caja = document.getElementById('conjunto-{{ sufijo }}');
+    const nombres = caja.querySelector('.conjunto-nombres');
+    function actualizar() {
+      const n = Number((caja.querySelector('input[name="agentes_cantidad"]:checked') || {}).value || 1);
+      nombres.hidden = n < 2;
+      nombres.querySelectorAll('label[data-n]').forEach(l => {
+        const usar = Number(l.dataset.n) <= n;
+        l.hidden = !usar;
+        const i = l.querySelector('input'); i.required = usar; i.disabled = !usar;
+      });
+    }
+    caja.querySelectorAll('input[name="agentes_cantidad"]').forEach(r => r.addEventListener('change', actualizar));
+    actualizar();
+  })();
+</script>
+{% endmacro %}

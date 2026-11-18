@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Otras actividades{% endblock %}
 {% block contenido %}
+{% from "_conjunto.html" import agentes_conjunto with context %}
 <div class="encabezado">
   <h1>🌼 Otras actividades</h1>
   <div class="mini-cifras">
@@ -45,6 +46,9 @@
       <label class="ancho">Lugar o destino *<input name="lugar" id="act-lugar" data-requerido placeholder="Ej.: domicilio de la mamá (barrio), CAPS Villa Norte, escuela N° 12"></label>
     </div>
     <div class="grilla">
+      {{ agentes_conjunto("act") }}
+    </div>
+    <div class="grilla">
       <label class="ancho"><span id="act-desc-titulo">Descripción</span>
         <textarea name="descripcion" id="act-descripcion" rows="3"></textarea>
       </label>
@@ -79,6 +83,7 @@
         {% elif a.tipo == 'salida' %}Destino: <b>{{ a.lugar }}</b>
         {% elif a.tipo in ACTIVIDADES_LECHE %}{{ 'Enviada a' if a.tipo == 'envio_leche' else 'Devuelta por' }} <b>{{ a.lugar }}</b>: <b>{{ a.cantidad_ml | ml }}</b>
           {%- if a.frascos %} en {{ a.frascos }} frasco{{ 's' if a.frascos != 1 }}{% endif %}{% if a.lote %}<br><small>Lote {{ a.lote }}</small>{% endif %}{% endif %}
+      {%- if a.agente2_nombre %}<br><small class="en-conjunto">👥 En conjunto: {{ a.cargo_nombre or 'Sin usuario' }}{{ ', ' ~ a.agente2_nombre if a.agente3_nombre else '' }} y {{ a.agente3_nombre or a.agente2_nombre }}</small>{% endif %}
       </td>
       <td>{{ a.descripcion or '' }}</td>
       <td class="num">

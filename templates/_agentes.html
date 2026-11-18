@@ -1,0 +1,40 @@
+{# Tarjeta "Actividades por agente", compartida por Cierre mensual y Estadísticas. #}
+{% macro n(v) %}{{ '{:,.0f}'.format(v or 0).replace(',', '.') }}{% endmacro %}
+{% macro agentes(a, periodo, titulo_extra="") %}
+<section class="tarjeta agentes">
+  <h2>👥 Actividades por agente{{ titulo_extra }}</h2>
+  <p class="nota">Porcentaje del total de registros {{ periodo }} ({{ n(a.total) }}) que cargó cada usuario. Se cuentan madres registradas, extracciones y estímulos, preparaciones, otras actividades (incluidos los mensajes de difusión) y controles de bebés. Las tareas hechas por 2 o 3 agentes cuentan para cada uno. Figuran todos los usuarios activos del equipo{% if a.sin_registros %}: {{ a.sin_registros }} sin registros cargados {{ periodo }}, con 0 %{% endif %}.</p>
+  {% if a.total %}
+  <ul class="leyenda-agentes">
+    {% for k, nombre, color in a.tareas %}<li><i style="background: {{ color }}"></i>{{ nombre }}</li>{% endfor %}
+  </ul>
+  {% set maximo = a.filas | map(attribute='pct') | max %}
+  <div class="barras-agentes">
+    {% for f in a.filas %}
+    <div class="fila-agente {{ '' if f.rol else 'sin-usuario' }}{{ ' sin-registros' if not f.total }}">
+      <div class="agente-nombre"><b>{{ f.nombre }}</b>{% if f.rol %}<small class="rol rol-{{ {'Administrador': 'admin', 'Jefe': 'jefe', 'Agente': 'agente', 'Consulta': 'consulta'}[f.rol] }}">{{ f.rol }}</small>{% endif %}</div>
+      <div class="agente-barra">
+        <div class="agente-relleno" style="width: {{ (100 * f.pct / (maximo or 1)) | round(1) }}%">
+          {% for k, nombre, color in a.tareas if f.cantidades[k] %}<span style="flex: {{ f.cantidades[k] }}; background: {{ color }}" title="{{ nombre }}: {{ f.cantidades[k] }} ({{ f.pct_tareas[k] }} % de lo que cargó)"></span>{% endfor %}
+        </div>
+        <b class="agente-pct">{{ ('%g' % f.pct).replace('.', ',') }} %</b>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="tabla-contenedor">
+  <table>
+    {% set cortos = {'madres': 'Madres', 'extracciones': 'Extracc.', 'preparaciones': 'Prepar.', 'actividades': 'Activ.', 'controles': 'Controles'} %}
+    <thead><tr><th>Agente</th>{% for k, nombre, color in a.tareas %}<th class="num" title="{{ nombre }}">{{ cortos[k] }}</th>{% endfor %}<th class="num">Total</th><th class="num">%</th></tr></thead>
+    <tbody>
+      {% for f in a.filas %}
+      <tr{{ ' class="sin-registros"' | safe if not f.total }}><td class="sin-cortar">{{ f.nombre }}</td>{% for k, nombre, color in a.tareas %}<td class="num">{{ n(f.cantidades[k]) }}</td>{% endfor %}<td class="num"><b>{{ n(f.total) }}</b></td><td class="num"><b>{{ ('%g' % f.pct).replace('.', ',') }} %</b></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="vacio">Sin registros {{ periodo }}.</p>
+  {% endif %}
+</section>
+{% endmacro %}

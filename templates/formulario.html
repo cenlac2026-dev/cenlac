@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}{{ titulo }}{% endblock %}
 {% block contenido %}
+{% from "_conjunto.html" import agentes_conjunto with context %}
 <h1>{{ titulo }}</h1>
 <form method="post" class="formulario" enctype="multipart/form-data">
   <fieldset>
@@ -110,6 +111,13 @@
     <legend>📝 Observaciones</legend>
     <textarea name="observaciones" rows="3">{{ madre.observaciones or '' }}</textarea>
   </fieldset>
+
+  {% if not madre.id %}
+  <fieldset>
+    <legend>👥 Registro</legend>
+    {{ agentes_conjunto("madre") }}
+  </fieldset>
+  {% endif %}
 
   <div class="acciones">
     <button type="submit">💾 Guardar registro</button>

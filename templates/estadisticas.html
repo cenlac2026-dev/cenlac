@@ -284,6 +284,10 @@
   <div class="cifra"><span>{{ d.actividades_mes }}</span>Actividades este mes</div>
 </div>
 
+{% from "_agentes.html" import agentes as tarjeta_agentes %}
+{{ tarjeta_agentes(agentes.mes, "de " ~ agentes.nombre_mes | lower, " · " ~ agentes.nombre_mes) }}
+{{ tarjeta_agentes(agentes.anio, "de " ~ agentes.anio_actual, " · año " ~ agentes.anio_actual) }}
+
 <h2>🤱 Madres y familias</h2>
 
 <div class="columnas">
