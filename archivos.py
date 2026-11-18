@@ -11,7 +11,18 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+
+
+def _url_base(url):
+    """Deja solo https://<proyecto>.supabase.co aunque se haya pegado con /rest/v1 o /storage/v1 al final."""
+    url = url.strip().rstrip("/")
+    for sufijo in ("/rest/v1", "/storage/v1", "/auth/v1"):
+        if url.endswith(sufijo):
+            url = url[: -len(sufijo)]
+    return url
+
+
+SUPABASE_URL = _url_base(os.environ.get("SUPABASE_URL", ""))
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 BUCKET = os.environ.get("SUPABASE_BUCKET", "consentimientos")
 EN_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
@@ -31,12 +42,24 @@ def _pedido(metodo, nombre, datos=None, tipo=None):
     return urllib.request.urlopen(urllib.request.Request(url, data=datos, method=metodo, headers=encabezados), timeout=60)
 
 
+class ErrorAlmacenamiento(Exception):
+    """No se pudo guardar el archivo (Supabase rechazó el pedido o no respondió)."""
+
+
 def guardar(nombre, archivo):
     """Guarda el archivo subido (FileStorage de Flask) con ese nombre."""
     if EN_SUPABASE:
         tipo = archivo.mimetype or mimetypes.guess_type(nombre)[0] or "application/octet-stream"
-        with _pedido("POST", nombre, archivo.read(), tipo):
-            pass
+        try:
+            with _pedido("POST", nombre, archivo.read(), tipo):
+                pass
+        except urllib.error.HTTPError as e:
+            detalle = e.read()[:300].decode("utf-8", "replace")
+            print(f"[archivos] Supabase Storage respondió {e.code} al subir {nombre}: {detalle}", flush=True)
+            raise ErrorAlmacenamiento(f"Supabase respondió {e.code}") from e
+        except (urllib.error.URLError, OSError) as e:
+            print(f"[archivos] No se pudo conectar con Supabase Storage al subir {nombre}: {e}", flush=True)
+            raise ErrorAlmacenamiento(str(e)) from e
         return
     os.makedirs(_carpeta(), exist_ok=True)
     archivo.save(os.path.join(_carpeta(), os.path.basename(nombre)))
