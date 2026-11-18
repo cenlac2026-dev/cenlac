@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Otras actividades{% endblock %}
 {% block contenido %}
+{% from "_conjunto.html" import agentes_conjunto with context %}
 <div class="encabezado">
   <h1>🌼 Otras actividades</h1>
   <div class="mini-cifras">
@@ -45,11 +46,7 @@
       <label class="ancho">Lugar o destino *<input name="lugar" id="act-lugar" data-requerido placeholder="Ej.: domicilio de la mamá (barrio), CAPS Villa Norte, escuela N° 12"></label>
     </div>
     <div class="grilla">
-      <label class="opcion ancho"><input type="checkbox" name="en_conjunto" id="act-conjunto" value="1"> 👥 Actividad en conjunto con otro agente</label>
-      <label class="ancho" id="act-companero-campo" hidden>Nombre del otro agente *
-        <input name="companero" id="act-companero" list="agentes-equipo" autocomplete="off" placeholder="Escriba y elija de la lista"></label>
-      <datalist id="agentes-equipo">{% for nombre in agentes %}<option value="{{ nombre }}">{% endfor %}</datalist>
-      <p class="nota ancho" id="act-conjunto-nota" hidden>La actividad se suma a las estadísticas de usted y del otro agente.</p>
+      {{ agentes_conjunto("act") }}
     </div>
     <div class="grilla">
       <label class="ancho"><span id="act-desc-titulo">Descripción</span>
@@ -86,7 +83,7 @@
         {% elif a.tipo == 'salida' %}Destino: <b>{{ a.lugar }}</b>
         {% elif a.tipo in ACTIVIDADES_LECHE %}{{ 'Enviada a' if a.tipo == 'envio_leche' else 'Devuelta por' }} <b>{{ a.lugar }}</b>: <b>{{ a.cantidad_ml | ml }}</b>
           {%- if a.frascos %} en {{ a.frascos }} frasco{{ 's' if a.frascos != 1 }}{% endif %}{% if a.lote %}<br><small>Lote {{ a.lote }}</small>{% endif %}{% endif %}
-      {%- if a.companero_nombre %}<br><small class="en-conjunto">👥 En conjunto: {{ a.cargo_nombre or 'Sin usuario' }} y {{ a.companero_nombre }}</small>{% endif %}
+      {%- if a.agente2_nombre %}<br><small class="en-conjunto">👥 En conjunto: {{ a.cargo_nombre or 'Sin usuario' }}{{ ', ' ~ a.agente2_nombre if a.agente3_nombre else '' }} y {{ a.agente3_nombre or a.agente2_nombre }}</small>{% endif %}
       </td>
       <td>{{ a.descripcion or '' }}</td>
       <td class="num">
@@ -123,14 +120,6 @@
       desc.placeholder = sel ? sel.dataset.ayuda : '';
     }
     form.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener('change', actualizar));
-    const conjunto = document.getElementById('act-conjunto');
-    const companero = document.getElementById('act-companero');
-    conjunto.addEventListener('change', () => {
-      document.getElementById('act-companero-campo').hidden = !conjunto.checked;
-      document.getElementById('act-conjunto-nota').hidden = !conjunto.checked;
-      companero.required = conjunto.checked;
-      if (conjunto.checked) companero.focus();
-    });
     actualizar();
   })();
 </script>

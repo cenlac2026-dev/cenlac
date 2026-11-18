@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Preparaciones realizadas{% endblock %}
 {% block contenido %}
+{% from "_conjunto.html" import agentes_conjunto with context %}
 <div class="encabezado">
   <h1>🧪 Preparaciones realizadas</h1>
   <div class="mini-cifras">
@@ -53,6 +54,7 @@
       <label>Hora de entrega *<input type="time" name="hora_entrega" id="prep-hora" value="{{ ahora }}" required></label>
       <label class="ancho">Observaciones<input name="observaciones" id="prep-obs"></label>
     </div>
+    {{ agentes_conjunto("prep") }}
     <div class="acciones"><button type="submit">💾 Guardar preparación</button></div>
   </fieldset>
   <datalist id="lista-preparaciones">{% for s in sug_preparacion %}<option value="{{ s }}">{% endfor %}</datalist>

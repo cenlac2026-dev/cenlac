@@ -488,3 +488,6 @@ tr.fila-extraccion td:first-child { box-shadow: inset 4px 0 0 #e8c66a; }
 .mensaje p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .mensajes-equipo .lista-mensajes { padding: 0; }
 .fila-agente.sin-registros .agente-nombre b, .agentes tr.sin-registros td { color: var(--suave); }
+.conjunto { grid-column: 1 / -1; margin: 6px 0; }
+.conjunto .conjunto-nombres { margin-top: 6px; }
+.en-conjunto { color: var(--suave); }

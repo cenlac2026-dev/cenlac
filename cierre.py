@@ -25,6 +25,7 @@ TAREAS_AGENTE = [
     ("actividades", "Otras actividades", "actividades", "fecha_hora", (108, 191, 143)),
     ("controles", "Controles de bebés", "controles_bebe", "fecha", (242, 155, 181)),
 ]
+AGENTES_EXTRA = ("agente2_id", "agente3_id")  # tareas hechas por 2 o 3 agentes
 ROLES_AGENTE = {"admin": "Administrador", "jefe": "Jefe", "agente": "Agente", "consulta": "Consulta"}
 
 
@@ -32,14 +33,16 @@ def por_agente(db, clave):
     """Registros cargados por cada usuario en el período (clave "AAAA-MM" para un mes o "AAAA" para el año),
     por tipo de tarea, con su porcentaje del total. Aparecen todos los usuarios activos del equipo,
     aunque no hayan cargado nada en el período (con 0), para que la lista de agentes esté completa."""
-    union = " UNION ALL ".join(
-        f"SELECT usuario_id, '{k}' FROM {tabla} WHERE substr({col}, 1, {len(clave)}) = ?"
-        for k, _, tabla, col, _ in TAREAS_AGENTE)
-    # Las actividades en conjunto también cuentan para el otro agente que participó.
-    union += f" UNION ALL SELECT companero_id, 'actividades' FROM actividades WHERE companero_id IS NOT NULL AND substr(fecha_hora, 1, {len(clave)}) = ?"
+    # Quien cargó cada registro y, si la tarea se hizo en conjunto, el segundo y tercer agente: cuenta para cada uno.
+    consultas = []
+    for k, _, tabla, col, _ in TAREAS_AGENTE:
+        consultas.append(f"SELECT usuario_id, '{k}' FROM {tabla} WHERE substr({col}, 1, {len(clave)}) = ?")
+        for extra in AGENTES_EXTRA:
+            consultas.append(f"SELECT {extra}, '{k}' FROM {tabla} WHERE {extra} IS NOT NULL AND substr({col}, 1, {len(clave)}) = ?")
+    union = " UNION ALL ".join(consultas)
     vacio = lambda: {k: 0 for k, *_ in TAREAS_AGENTE}
     conteo = {}
-    for uid, tarea in db.execute(union, [clave] * (len(TAREAS_AGENTE) + 1)):
+    for uid, tarea in db.execute(union, [clave] * len(consultas)):
         conteo.setdefault(uid, vacio())[tarea] += 1
     usuarios = {u[0]: u for u in db.execute("SELECT id, nombre, rol, activo FROM usuarios")}
     # Usuarios activos que cargan datos (no los de solo consulta) aunque no tengan registros en el período.
@@ -684,7 +687,7 @@ def generar_pdf(d):
     pdf.set_text_color(*SUAVE)
     pdf.multi_cell(0, 4.2, f"Porcentaje del total de registros del mes ({num(ag['total'])}) que cargó cada usuario: madres registradas, "
                            "extracciones y estímulos, preparaciones, otras actividades y controles de bebés. "
-                           "Las actividades en conjunto cuentan para los dos agentes. "
+                           "Las tareas hechas por 2 o 3 agentes cuentan para cada uno. "
                            "Figuran todos los usuarios activos; con 0 % quienes no cargaron registros en el mes.",
                    new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(*TEXTO)
