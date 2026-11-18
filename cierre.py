@@ -35,9 +35,11 @@ def por_agente(db, clave):
     union = " UNION ALL ".join(
         f"SELECT usuario_id, '{k}' FROM {tabla} WHERE substr({col}, 1, {len(clave)}) = ?"
         for k, _, tabla, col, _ in TAREAS_AGENTE)
+    # Las actividades en conjunto también cuentan para el otro agente que participó.
+    union += f" UNION ALL SELECT companero_id, 'actividades' FROM actividades WHERE companero_id IS NOT NULL AND substr(fecha_hora, 1, {len(clave)}) = ?"
     vacio = lambda: {k: 0 for k, *_ in TAREAS_AGENTE}
     conteo = {}
-    for uid, tarea in db.execute(union, [clave] * len(TAREAS_AGENTE)):
+    for uid, tarea in db.execute(union, [clave] * (len(TAREAS_AGENTE) + 1)):
         conteo.setdefault(uid, vacio())[tarea] += 1
     usuarios = {u[0]: u for u in db.execute("SELECT id, nombre, rol, activo FROM usuarios")}
     # Usuarios activos que cargan datos (no los de solo consulta) aunque no tengan registros en el período.
@@ -682,6 +684,7 @@ def generar_pdf(d):
     pdf.set_text_color(*SUAVE)
     pdf.multi_cell(0, 4.2, f"Porcentaje del total de registros del mes ({num(ag['total'])}) que cargó cada usuario: madres registradas, "
                            "extracciones y estímulos, preparaciones, otras actividades y controles de bebés. "
+                           "Las actividades en conjunto cuentan para los dos agentes. "
                            "Figuran todos los usuarios activos; con 0 % quienes no cargaron registros en el mes.",
                    new_x="LMARGIN", new_y="NEXT")
     pdf.set_text_color(*TEXTO)

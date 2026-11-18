@@ -3,7 +3,7 @@
 {% macro agentes(a, periodo, titulo_extra="") %}
 <section class="tarjeta agentes">
   <h2>👥 Actividades por agente{{ titulo_extra }}</h2>
-  <p class="nota">Porcentaje del total de registros {{ periodo }} ({{ n(a.total) }}) que cargó cada usuario. Se cuentan madres registradas, extracciones y estímulos, preparaciones, otras actividades (incluidos los mensajes de difusión) y controles de bebés. Figuran todos los usuarios activos del equipo{% if a.sin_registros %}: {{ a.sin_registros }} sin registros cargados {{ periodo }}, con 0 %{% endif %}.</p>
+  <p class="nota">Porcentaje del total de registros {{ periodo }} ({{ n(a.total) }}) que cargó cada usuario. Se cuentan madres registradas, extracciones y estímulos, preparaciones, otras actividades (incluidos los mensajes de difusión; las actividades en conjunto cuentan para los dos agentes) y controles de bebés. Figuran todos los usuarios activos del equipo{% if a.sin_registros %}: {{ a.sin_registros }} sin registros cargados {{ periodo }}, con 0 %{% endif %}.</p>
   {% if a.total %}
   <ul class="leyenda-agentes">
     {% for k, nombre, color in a.tareas %}<li><i style="background: {{ color }}"></i>{{ nombre }}</li>{% endfor %}

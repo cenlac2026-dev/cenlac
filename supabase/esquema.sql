@@ -165,6 +165,9 @@ CREATE INDEX IF NOT EXISTS idx_madres_usuario ON madres (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_controles_usuario ON controles_bebe (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_extracciones_usuario ON extracciones (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_actividades_usuario ON actividades (usuario_id);
+-- Actualización 18/11: actividad en conjunto con otro agente (cuenta para los dos en las estadísticas).
+ALTER TABLE actividades ADD COLUMN IF NOT EXISTS companero_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_actividades_companero ON actividades (companero_id);
 CREATE INDEX IF NOT EXISTS idx_preparaciones_usuario ON preparaciones (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_novedades_usuario ON novedades (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_mensajes_usuario ON mensajes (usuario_id);

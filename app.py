@@ -256,6 +256,9 @@ def init_db():
         for tabla in TABLAS_CON_USUARIO:
             if "usuario_id" not in {fila[1] for fila in db.execute(f"PRAGMA table_info({tabla})")}:
                 db.execute(f"ALTER TABLE {tabla} ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)")
+        # Actividad en conjunto: el otro agente que participó (cuenta para los dos en las estadísticas).
+        if "companero_id" not in {fila[1] for fila in db.execute("PRAGMA table_info(actividades)")}:
+            db.execute("ALTER TABLE actividades ADD COLUMN companero_id INTEGER REFERENCES usuarios(id)")
 
 
 @app.template_filter("fecha")
@@ -962,6 +965,21 @@ def actividades():
         lugar = texto("lugar")
         if tipo == "salida" and not lugar:
             errores.append("En salidas, indique el lugar o destino.")
+        # Actividad en conjunto: el otro agente se escribe por nombre y la actividad cuenta para los dos.
+        companero_id = None
+        if f.get("en_conjunto"):
+            nombre_comp = " ".join(texto("companero").split()).lower()
+            if not nombre_comp:
+                errores.append("En una actividad en conjunto, escriba el nombre del otro agente.")
+            else:
+                coincide = [u for u in db.execute("SELECT id, nombre FROM usuarios WHERE activo = 1").fetchall()
+                            if " ".join(u[1].split()).lower() == nombre_comp]
+                if not coincide:
+                    errores.append(f"No hay un usuario activo llamado «{texto('companero')}». Elija el nombre de la lista.")
+                elif coincide[0][0] == usuario_id_actual():
+                    errores.append("En una actividad en conjunto, el otro agente tiene que ser otra persona.")
+                else:
+                    companero_id = coincide[0][0]
         cantidad_ml = frascos = None
         if tipo in ACTIVIDADES_LECHE:
             if not lugar:
@@ -983,13 +1001,13 @@ def actividades():
         else:
             db.execute(
                 "INSERT INTO actividades (fecha_hora, tipo, destinatario_nombre, destinatario_apellido, material, "
-                "descripcion, lugar, cantidad_ml, frascos, lote, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "descripcion, lugar, cantidad_ml, frascos, lote, usuario_id, companero_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (fecha_hora, tipo,
                  nombre if tipo == "educacion" else None, apellido if tipo == "educacion" else None,
                  material if tipo == "limpieza" else None, texto("descripcion"),
                  lugar if tipo == "salida" or tipo in ACTIVIDADES_LECHE else None,
                  cantidad_ml, frascos, (texto("lote") or None) if tipo in ACTIVIDADES_LECHE else None,
-                 usuario_id_actual()),
+                 usuario_id_actual(), companero_id),
             )
             db.commit()
             if tipo in ACTIVIDADES_LECHE:
@@ -1001,11 +1019,15 @@ def actividades():
         return redirect(url_for("actividades", tipo=tipo))
 
     filtro = request.args.get("filtro") or ""
-    sql, params = "SELECT * FROM actividades", []
+    sql = ("SELECT a.*, u1.nombre AS cargo_nombre, u2.nombre AS companero_nombre FROM actividades a "
+           "LEFT JOIN usuarios u1 ON u1.id = a.usuario_id LEFT JOIN usuarios u2 ON u2.id = a.companero_id")
+    params = []
     if filtro in ACTIVIDADES:
-        sql += " WHERE tipo = ?"
+        sql += " WHERE a.tipo = ?"
         params.append(filtro)
-    lista = db.execute(sql + " ORDER BY fecha_hora DESC, id DESC LIMIT 200", params).fetchall()
+    lista = db.execute(sql + " ORDER BY a.fecha_hora DESC, a.id DESC LIMIT 200", params).fetchall()
+    agentes = [u[0] for u in db.execute("SELECT nombre FROM usuarios WHERE activo = 1 AND rol != 'consulta' AND id != ? "
+                                        "ORDER BY nombre", (usuario_id_actual() or 0,)).fetchall()]
     conteo = dict(db.execute("SELECT tipo, COUNT(*) FROM actividades GROUP BY tipo").fetchall())
     mes = datetime.now().strftime("%Y-%m")
     leche_mes = dict(db.execute("SELECT tipo, COALESCE(SUM(cantidad_ml), 0) FROM actividades "
@@ -1021,7 +1043,7 @@ def actividades():
     ahora = datetime.now()
     return render_template(
         "actividades.html", actividades=lista, filtro=filtro, conteo=conteo, leche_mes=leche_mes,
-        en_pasteurizacion=en_pasteurizacion, instituciones=instituciones,
+        en_pasteurizacion=en_pasteurizacion, instituciones=instituciones, agentes=agentes,
         tipo_elegido=request.args.get("tipo") or "educacion",
         hoy=ahora.strftime("%Y-%m-%d"), ahora=ahora.strftime("%H:%M"),
     )
