@@ -53,6 +53,9 @@ if os.environ.get("EN_INTERNET") == "1":
 # Fotos o PDF de los consentimientos informados: carpeta local o Supabase Storage (ver archivos.py).
 EXTENSIONES_CONSENTIMIENTO = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".pdf"}
 MAX_CONSENTIMIENTO_MB = 15
+AVISO_NO_SE_GUARDO = ("No se pudo guardar el archivo del consentimiento en el almacenamiento. "
+                      "Los demás datos quedaron guardados; pruebe subirlo de nuevo desde la ficha "
+                      "o avise al administrador.")
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONSENTIMIENTO_MB * 1024 * 1024
 
 SITUACIONES = {"internada": "Internada", "domicilio": "En domicilio"}
@@ -711,9 +714,13 @@ def subir_consentimiento(madre_id):
         flash(error, "error")
     else:
         # Si no se indica la fecha de firma, se conserva la que ya estaba cargada.
-        guardar_consentimiento(get_db(), madre_id, archivo,
-                               (request.form.get("consentimiento_fecha") or "").strip() or None)
-        flash("Consentimiento informado cargado.")
+        try:
+            guardar_consentimiento(get_db(), madre_id, archivo,
+                                   (request.form.get("consentimiento_fecha") or "").strip() or None)
+        except archivos.ErrorAlmacenamiento:
+            flash(AVISO_NO_SE_GUARDO, "error")
+        else:
+            flash("Consentimiento informado cargado.")
     return redirect(url_for("ver", madre_id=madre_id) + "#consentimiento")
 
 
@@ -742,8 +749,11 @@ def nueva():
                 deshacer(get_db())
                 errores.append("Ya existe una madre registrada con ese DNI.")
             else:
-                guardar_consentimiento(get_db(), madre_id, archivo,
-                                       (request.form.get("consentimiento_fecha") or "").strip())
+                try:
+                    guardar_consentimiento(get_db(), madre_id, archivo,
+                                           (request.form.get("consentimiento_fecha") or "").strip())
+                except archivos.ErrorAlmacenamiento:
+                    flash(AVISO_NO_SE_GUARDO, "error")
                 flash("¡Listo! La mamá donante quedó registrada. Gracias por sumarla.")
                 return redirect(url_for("ver", madre_id=madre_id))
         for e in errores:
@@ -914,8 +924,11 @@ def editar(madre_id):
                 deshacer(get_db())
                 errores.append("Ya existe otra madre registrada con ese DNI.")
             else:
-                guardar_consentimiento(get_db(), madre_id, archivo,
-                                       (request.form.get("consentimiento_fecha") or "").strip())
+                try:
+                    guardar_consentimiento(get_db(), madre_id, archivo,
+                                           (request.form.get("consentimiento_fecha") or "").strip())
+                except archivos.ErrorAlmacenamiento:
+                    flash(AVISO_NO_SE_GUARDO, "error")
                 flash("¡Listo! Guardamos los cambios.")
                 return redirect(url_for("ver", madre_id=madre_id))
         for e in errores:
