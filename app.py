@@ -1491,8 +1491,11 @@ def estadisticas():
         listas.append({"clave": clave, "titulo": titulo, "filas": filas,
                        "activas": sum(1 for f in filas if not f["fecha_alta"]),
                        "ml_mes": sum(f["ml_mes"] or 0 for f in filas), "total_ml": sum(f["total_ml"] or 0 for f in filas)})
+    hoy = date.today()
+    agentes = {"mes": cierre.por_agente(db, hoy.strftime("%Y-%m")), "anio": cierre.por_agente(db, str(hoy.year)),
+               "nombre_mes": cierre.nombre_mes(hoy.year, hoy.month), "anio_actual": hoy.year}
     return render_template("estadisticas.html", d=datos, proy=datos_proyeccion(db), riesgo=riesgo,
-                           por_modalidad=graficos_modalidad(db), listas=listas)
+                           por_modalidad=graficos_modalidad(db), listas=listas, agentes=agentes)
 
 
 init_db()
